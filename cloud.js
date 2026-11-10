@@ -22,7 +22,7 @@ window.Cloud = (() => {
       body: JSON.stringify({ email: String(email).trim(), password })
     });
     const j = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(/invalid/i.test(j.error_description || j.msg || "") ? "Wrong email or password." : (j.error_description || j.msg || "Sign-in failed."));
+    if (!r.ok) throw new Error(/invalid/i.test(j.error_description || j.msg || "") ? "Wrong username or password." : (j.error_description || j.msg || "Sign-in failed."));
     keep(fromAuth(j));
     return session;
   }

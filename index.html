@@ -5,16 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sky High Dialer</title>
 <meta name="color-scheme" content="light dark">
-<link rel="stylesheet" href="dialer.css?v=1.5.0">
-<script src="theme.js?v=1.5.0"></script>
+<link rel="stylesheet" href="dialer.css?v=1.6.0">
+<script src="theme.js?v=1.6.0"></script>
 </head>
 <body class="signed-out">
 <div class="login" id="login" hidden>
   <form class="login-card" id="loginForm" autocomplete="on">
     <div class="brand"><span class="mark" aria-hidden="true"></span><div class="brand-name">Sky High Dialer</div></div>
     <h1>Sign in</h1>
-    <label for="loginEmail">Email</label>
-    <input id="loginEmail" type="email" autocomplete="username" required>
+    <label for="loginEmail">Username or email</label>
+    <input id="loginEmail" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" required>
     <label for="loginPw">Password</label>
     <input id="loginPw" type="password" autocomplete="current-password" required>
     <label for="loginPc">This PC is number</label>
@@ -43,7 +43,10 @@
     <button id="btnPause" class="btn" type="button" hidden>Pause</button>
     <button id="btnSkip" class="btn ghost" type="button" title="Stop waiting on the current lead and move on">Skip lead</button>
     <button id="btnView" class="btn ghost" type="button">Customer view</button>
-    <button id="btnTheme" class="btn ghost" type="button" title="Switch between light and dark">Dark mode</button>
+    <div class="theme-pick" id="themePick">
+      <button id="btnTheme" class="btn ghost" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="themeMenu" title="Change the colours on this PC"><span class="theme-dot" aria-hidden="true"></span>Theme</button>
+      <div class="theme-menu" id="themeMenu" role="menu" aria-label="Theme" hidden></div>
+    </div>
     <button id="btnSignOut" class="btn ghost" type="button" title="Sign out of the dialer on this PC"><span id="whoEmail" class="who"></span> Sign out</button>
   </div>
 </header>
@@ -77,7 +80,37 @@
           <tbody id="adminRows"></tbody>
         </table>
       </div>
-      <p class="hint">Agent PCs sign in with the agent login and pick their PC number. Sheets, settings, states and Start over are only here; agents see the customer card, Start/Pause, Sale made and Do not call.</p>
+      <p class="hint">Send each PC its own link (<b>Copy link</b>) so it remembers its PC number. Sheets, settings, states and Start over are only here; agents see the customer card, Start/Pause, Sale made and Do not call.</p>
+
+      <div class="users" id="usersBox">
+        <div class="admin-head">
+          <h2>Users <span class="chip" id="usersSum"></span></h2>
+          <div class="admin-btns"><button id="btnUsersRefresh" class="btn small ghost" type="button">Refresh</button></div>
+        </div>
+        <form class="user-add" id="userAddForm" autocomplete="off" novalidate>
+          <div class="user-field">
+            <label for="uLogin">Username or email</label>
+            <input id="uLogin" type="text" maxlength="80" placeholder="e.g. ali" autocomplete="off" autocapitalize="none" spellcheck="false">
+          </div>
+          <div class="user-field">
+            <label for="uPw">Password (8 or more characters)</label>
+            <span class="pw-wrap"><input id="uPw" type="password" maxlength="72" autocomplete="new-password"><button class="btn tiny ghost pw-show" type="button" data-show="uPw">Show</button></span>
+          </div>
+          <div class="user-field narrow">
+            <label for="uRole">Role</label>
+            <select id="uRole"><option value="agent" selected>Agent</option><option value="admin">Admin</option></select>
+          </div>
+          <button id="uAdd" class="btn small primary" type="submit">Add user</button>
+        </form>
+        <p class="msg" id="usersMsg" role="status"></p>
+        <div class="admin-wrap">
+          <table class="admin-table users-table">
+            <thead><tr><th>Login</th><th>Role</th><th>Sign-in</th><th>Last sign-in (Pacific time)</th><th></th></tr></thead>
+            <tbody id="userRows"></tbody>
+          </table>
+        </div>
+        <p class="hint">An agent signs in with just the username (for example <b>ali</b>) and the password you set here. Agents only get the customer card; admins get everything. Changing someone's password signs them out.</p>
+      </div>
     </div>
 
     <div class="sheets" id="sheets" aria-label="Sheets being dialed"></div>
@@ -244,9 +277,9 @@
   </aside>
 </main>
 
-<script src="states.js?v=1.5.0"></script>
-<script src="xlsx.js?v=1.5.0"></script>
-<script src="cloud.js?v=1.5.0"></script>
-<script src="dialer.js?v=1.5.0"></script>
+<script src="states.js?v=1.6.0"></script>
+<script src="xlsx.js?v=1.6.0"></script>
+<script src="cloud.js?v=1.6.0"></script>
+<script src="dialer.js?v=1.6.0"></script>
 </body>
 </html>

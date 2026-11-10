@@ -1,5 +1,7 @@
 /* Layout: one-screen tool. Control bar on top, lead table left, Zoom phone fixed-width right. */
-:root {
+/* Themes: each one is a set of colours on [data-theme]. The page uses the one on <html>; the swatches in the
+   Theme menu carry their own data-theme, so they always show that theme's colours. */
+:root, [data-theme="light"] {
   --bg: #f3f5f8;
   --surface: #ffffff;
   --line: #dde2ea;
@@ -18,8 +20,8 @@
   --mono: "Cascadia Mono", Consolas, ui-monospace, monospace;
   color-scheme: light;
 }
-/* Dark theme: forced with the toggle (data-theme="dark"), or automatic when the PC is in dark mode and nothing is forced. */
-:root[data-theme="dark"] {
+/* Dark: picked in the Theme menu, or automatic when the PC is in dark mode and no theme is picked. */
+[data-theme="dark"] {
   --bg: #11151c; --surface: #1a2029; --line: #2c3442; --fg: #e6ebf2; --muted: #98a3b5;
   --accent: #5b8cff; --accent-fg: #0b1220;
   --live: #4fd08f; --live-bg: #12321f; --warn: #f0b153; --warn-bg: #3a2a10;
@@ -27,13 +29,45 @@
   color-scheme: dark;
 }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
+  :root:not([data-theme]) {
     --bg: #11151c; --surface: #1a2029; --line: #2c3442; --fg: #e6ebf2; --muted: #98a3b5;
     --accent: #5b8cff; --accent-fg: #0b1220;
     --live: #4fd08f; --live-bg: #12321f; --warn: #f0b153; --warn-bg: #3a2a10;
     --bad: #ff7d8d; --bad-bg: #3d1820; --row-hl: #1f2b44;
     color-scheme: dark;
   }
+}
+/* Sunrise: warm cream with a burnt-orange accent */
+[data-theme="sunrise"] {
+  --bg: #fbf3e7; --surface: #fffdf9; --line: #ecdcc6; --fg: #2b1d12; --muted: #775f4c;
+  --accent: #b93c0a; --accent-fg: #ffffff;
+  --live: #177a3c; --live-bg: #e2f3e4; --warn: #8f5609; --warn-bg: #fdebc6;
+  --bad: #b3222e; --bad-bg: #fde4e2; --row-hl: #fde9d3;
+  color-scheme: light;
+}
+/* Mint: soft green with a deep teal accent */
+[data-theme="mint"] {
+  --bg: #edf6f1; --surface: #ffffff; --line: #d2e5da; --fg: #12261c; --muted: #51675a;
+  --accent: #0f766e; --accent-fg: #ffffff;
+  --live: #36730f; --live-bg: #e3f3d6; --warn: #8f5609; --warn-bg: #fcefcc;
+  --bad: #b42335; --bad-bg: #fde8eb; --row-hl: #d9f0e8;
+  color-scheme: light;
+}
+/* Ocean: deep navy with a bright sky-blue accent */
+[data-theme="ocean"] {
+  --bg: #0b1622; --surface: #11202f; --line: #233a4e; --fg: #e3eef7; --muted: #8fa6ba;
+  --accent: #38bdf8; --accent-fg: #06202e;
+  --live: #4ade80; --live-bg: #0f3324; --warn: #fbbf24; --warn-bg: #3b2c0c;
+  --bad: #fb7185; --bad-bg: #40161f; --row-hl: #16324a;
+  color-scheme: dark;
+}
+/* Plum: dark purple with a soft violet accent */
+[data-theme="plum"] {
+  --bg: #17111f; --surface: #211830; --line: #3a2b50; --fg: #efe7f8; --muted: #a99bbd;
+  --accent: #c084fc; --accent-fg: #1c0b2e;
+  --live: #4ade80; --live-bg: #133024; --warn: #fbbf24; --warn-bg: #3a2a10;
+  --bad: #fb7185; --bad-bg: #42162a; --row-hl: #2e2146;
+  color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -84,7 +118,7 @@ body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.45 var(-
 @media (max-width: 700px) { .import-grid { grid-template-columns: 1fr; } }
 .import-col { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
 .import-col label, .settings-grid label { font-weight: 600; font-size: 13px; }
-input[type="url"], input[type="text"], input[type="number"], textarea, select { font: inherit; width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); }
+input[type="url"], input[type="text"], input[type="password"], input[type="email"], input[type="number"], textarea, select { font: inherit; width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); }
 textarea { font-family: var(--mono); font-size: 12px; resize: vertical; }
 select { width: auto; }
 .settings-grid { display: grid; grid-template-columns: max-content auto; gap: 10px 16px; align-items: center; justify-items: start; }
@@ -135,7 +169,6 @@ input[type="number"] { width: 90px; }
 .focus { display: none; min-width: 0; min-height: 0; }
 body.focus-mode .leads { display: none; }
 body.focus-mode .focus { display: block; }
-body.focus-mode #btnTheme { display: none; }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 24px 28px; display: flex; flex-direction: column; gap: 14px; }
 .card-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .card-left { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
@@ -203,9 +236,9 @@ input[type="file"]::file-selector-button { font: inherit; font-weight: 600; padd
 .edit.short { max-width: 140px; font-weight: 400; font-size: 13px; }
 .card-btns { display: flex; gap: 8px; flex-wrap: wrap; }
 .btn.sale { color: var(--live); border-color: var(--live); }
-.btn.sale.armed { background: var(--live); color: #fff; border-color: var(--live); }
+.btn.sale.armed { background: var(--live); color: var(--accent-fg); border-color: var(--live); }
 .btn.tiny.sale { color: var(--live); }
-.pill.sale { color: #fff; background: var(--live); border-color: transparent; }
+.pill.sale { color: var(--accent-fg); background: var(--live); border-color: transparent; }
 .card input.edit, .card textarea.edit { font-weight: 600; padding: 4px 8px; margin: 0; border: 1px solid var(--line); border-radius: 6px; background: transparent; width: 100%; }
 .card input.edit:focus, .card textarea.edit:focus { border-color: var(--accent); background: var(--bg); }
 .card input.edit.bad { border-color: var(--bad); background: var(--bad-bg); }
@@ -256,3 +289,47 @@ body:not(.role-admin) .admin-panel { display: none; }
 .card-call { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px 12px; border-radius: 10px; background: var(--row-hl); }
 .card-call[hidden] { display: none; }
 .card-call-h { font-weight: 600; font-size: 13px; margin-right: 4px; }
+
+/* Theme menu (v1.6) */
+.theme-pick { position: relative; }
+.theme-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); margin-right: 7px; }
+.theme-menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 60; width: max-content; min-width: 230px; max-width: calc(100vw - 24px); padding: 6px; display: flex; flex-direction: column; gap: 2px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 14px 34px rgba(0, 0, 0, .22); }
+.theme-opt { display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 10px; border: 0; border-radius: 8px; background: transparent; color: var(--fg); font: inherit; text-align: left; cursor: pointer; }
+.theme-opt:hover { background: var(--bg); }
+.theme-opt:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.theme-opt[aria-checked="true"] { background: var(--row-hl); font-weight: 600; }
+.theme-name { flex: 1; display: flex; flex-direction: column; line-height: 1.25; }
+.theme-name small { color: var(--muted); font-weight: 400; font-size: 12px; white-space: nowrap; }
+.theme-tick { color: var(--accent); font-weight: 700; visibility: hidden; }
+.theme-opt[aria-checked="true"] .theme-tick { visibility: visible; }
+/* swatch: a tiny picture of the theme (page colour, a card, the accent) */
+.theme-sw { position: relative; flex: none; width: 36px; height: 24px; border-radius: 6px; background: var(--bg); border: 1px solid var(--line); overflow: hidden; }
+.theme-sw::before { content: ""; position: absolute; left: 4px; top: 4px; width: 15px; bottom: 4px; border-radius: 3px; background: var(--surface); border: 1px solid var(--line); }
+.theme-sw::after { content: ""; position: absolute; right: 5px; top: 50%; width: 9px; height: 9px; margin-top: -4.5px; border-radius: 50%; background: var(--accent); }
+.theme-sw.auto { display: flex; background: none; }
+.theme-sw.auto::before, .theme-sw.auto::after { content: none; }
+.theme-sw.auto > span { flex: 1; position: relative; background: var(--bg); }
+.theme-sw.auto > span::after { content: ""; position: absolute; left: 50%; top: 50%; width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 50%; background: var(--accent); }
+
+/* Users (v1.6): add, change password / role, remove. Admin only (it lives inside .admin-panel). */
+.users { display: flex; flex-direction: column; gap: 10px; margin-top: 6px; padding-top: 16px; border-top: 1px solid var(--line); }
+.user-add { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 12px; padding: 12px; border: 1px dashed var(--line); border-radius: 10px; background: var(--bg); }
+.user-field { display: flex; flex-direction: column; gap: 4px; flex: 1 1 190px; min-width: 0; }
+.user-field.narrow { flex: 0 0 auto; }
+.user-field label { font-weight: 600; font-size: 13px; }
+.user-add input, .user-add select, .user-pw input { background: var(--surface); }
+.pw-wrap { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.pw-wrap input { flex: 1; min-width: 0; }
+.pw-show { flex: none; min-width: 52px; }
+.users-table td { vertical-align: middle; }
+.users-table td.you { font-weight: 600; }
+.users-table select { padding: 4px 8px; font-size: 13px; }
+.users-table tr.user-pw-row td { background: var(--row-hl); white-space: normal; }
+.user-pw { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.user-pw label { font-weight: 600; font-size: 13px; }
+.user-pw .pw-wrap { flex: 1 1 220px; max-width: 340px; }
+.users.busy { opacity: .65; pointer-events: none; }
+/* buttons at the end of a row: a normal table cell, so the row line stays straight */
+.admin-table td.row-actions { display: table-cell; text-align: right; }
+.admin-table td.row-actions .btn { margin-left: 6px; }

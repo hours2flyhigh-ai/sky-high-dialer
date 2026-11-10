@@ -54,6 +54,11 @@
     }
   };
 
+  // ---------- time: always US time (the account is Pacific), whatever the PC's own clock is set to ----------
+  const PACIFIC = "America/Los_Angeles";
+  const pacific = (d, opts) => new Date(d).toLocaleString("en-US", { timeZone: PACIFIC, ...(opts || {}) });
+  const stamp = () => pacific(Date.now()) + " PT";
+
   // ---------- phone helpers ----------
   const digits = (s) => String(s || "").replace(/\D/g, "");
   function toE164(raw) {
@@ -446,7 +451,7 @@
     const lead = current && leadById(current.leadId);
     if (!lead || !calleeMatches(d, lead)) return;
     clearTimeout(watchdog);
-    lead.lastCall = new Date().toLocaleString();
+    lead.lastCall = stamp();
     if (lead.sale) {
       lead.status = "sale"; lead.result = "Sale made";
     } else if (current.connected) {
@@ -567,7 +572,7 @@
     const lead = leadById(current.leadId);
     clearTimeout(watchdog);
     if (lead) {
-      lead.lastCall = new Date().toLocaleString();
+      lead.lastCall = stamp();
       if (lead.sale) { lead.status = "sale"; lead.result = "Sale made"; }
       else if (answered || current.connected) { lead.status = "talked"; lead.result = "Answered"; }
       else { lead.result = "No answer"; lead.status = lead.attempts >= settings.maxAttempts ? "noanswer" : "retry"; }
@@ -720,7 +725,7 @@
     lead.sale = !lead.sale;
     const onLine = current && current.leadId === lead.id;
     if (lead.sale) {
-      lead.saleAt = new Date().toLocaleString();
+      lead.saleAt = stamp();
       if (!onLine) { lead.prevStatus = lead.status; lead.status = "sale"; }
       lead.result = "Sale made";
       if (countdown && countdown.leadId === lead.id) { cancelCountdown(); if (running) scheduleNext(); }
@@ -1118,18 +1123,64 @@
   }
   for (const id of ["maxAttempts", "retryMode", "gapSec", "hoursGuard", "callVia", "pcCount", "pcNumber"]) $(id).addEventListener("change", readSettings);
 
-  // ---------- theme ----------
-  const darkQuery = window.matchMedia("(prefers-color-scheme: dark)");
-  const isDark = () => (document.documentElement.dataset.theme || (darkQuery.matches ? "dark" : "light")) === "dark";
-  function syncThemeBtn() { $("btnTheme").textContent = isDark() ? "Light mode" : "Dark mode"; }
-  $("btnTheme").addEventListener("click", () => {
-    const next = isDark() ? "light" : "dark";
-    document.documentElement.dataset.theme = next;
-    try { localStorage.setItem("shd-theme", next); } catch { /* ignore */ }
-    syncThemeBtn();
+  // ---------- theme: each PC picks its own colours (kept on that PC) ----------
+  const THEMES = [
+    { id: "auto", name: "Auto", note: "Light or dark, like this PC" },
+    { id: "light", name: "Light", note: "Clean white and blue" },
+    { id: "dark", name: "Dark", note: "Easy on the eyes at night" },
+    { id: "sunrise", name: "Sunrise", note: "Warm cream and orange" },
+    { id: "mint", name: "Mint", note: "Soft green and teal" },
+    { id: "ocean", name: "Ocean", note: "Deep navy and sky blue" },
+    { id: "plum", name: "Plum", note: "Dark purple and violet" }
+  ];
+  const themeNow = () => { const t = document.documentElement.dataset.theme; return THEMES.some((x) => x.id === t) ? t : "auto"; };
+  function setTheme(id) {
+    if (id === "auto" || !THEMES.some((x) => x.id === id)) {
+      delete document.documentElement.dataset.theme;
+      try { localStorage.removeItem("shd-theme"); } catch { /* ignore */ }
+    } else {
+      document.documentElement.dataset.theme = id;
+      try { localStorage.setItem("shd-theme", id); } catch { /* ignore */ }
+    }
+    syncThemeMenu();
+  }
+  function syncThemeMenu() {
+    const now = themeNow();
+    for (const b of $("themeMenu").children) b.setAttribute("aria-checked", b.dataset.pick === now ? "true" : "false");
+    $("btnTheme").title = "Theme: " + THEMES.find((x) => x.id === now).name + ". Click to change the colours on this PC.";
+  }
+  function themeMenuOpen(open) {
+    $("themeMenu").hidden = !open;
+    $("btnTheme").setAttribute("aria-expanded", open ? "true" : "false");
+    if (open) { const cur = $("themeMenu").querySelector('[aria-checked="true"]') || $("themeMenu").firstElementChild; if (cur) cur.focus(); }
+  }
+  for (const t of THEMES) {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "theme-opt"; b.dataset.pick = t.id; b.setAttribute("role", "menuitemradio");
+    const sw = document.createElement("span"); sw.className = "theme-sw";
+    if (t.id === "auto") {
+      sw.classList.add("auto");
+      for (const half of ["light", "dark"]) { const h = document.createElement("span"); h.dataset.theme = half; sw.appendChild(h); }
+    } else sw.dataset.theme = t.id;
+    const nm = document.createElement("span"); nm.className = "theme-name"; nm.textContent = t.name;
+    const note = document.createElement("small"); note.textContent = t.note; nm.appendChild(note);
+    const tick = document.createElement("span"); tick.className = "theme-tick"; tick.setAttribute("aria-hidden", "true"); tick.textContent = "\u2713";
+    b.append(sw, nm, tick);
+    b.addEventListener("click", () => { setTheme(t.id); themeMenuOpen(false); $("btnTheme").focus(); });
+    $("themeMenu").appendChild(b);
+  }
+  $("btnTheme").addEventListener("click", () => themeMenuOpen($("themeMenu").hidden));
+  document.addEventListener("click", (e) => { if (!$("themeMenu").hidden && !$("themePick").contains(e.target)) themeMenuOpen(false); });
+  $("themePick").addEventListener("keydown", (e) => {
+    if ($("themeMenu").hidden) return;
+    if (e.key === "Escape") { themeMenuOpen(false); $("btnTheme").focus(); return; }
+    if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+    e.preventDefault();
+    const items = [...$("themeMenu").children];
+    const i = items.indexOf(document.activeElement);
+    items[(i + (e.key === "ArrowDown" ? 1 : -1) + items.length) % items.length].focus();
   });
-  darkQuery.addEventListener("change", syncThemeBtn);
-  syncThemeBtn();
+  syncThemeMenu();
 
   window.addEventListener("beforeunload", (e) => {
     if (Date.now() - zoomLaunchAt < 3000) return; // opening the Zoom app, not leaving
@@ -1193,7 +1244,7 @@
     const l = current ? leadById(current.leadId) : null;
     return { running, state: $("statusBox").dataset.state, text: $("statusText").textContent.slice(0, 120),
       lead: l ? (l.name || l.display) : "", called: mine.filter((x) => x.attempts > 0).length,
-      sales: mine.filter((x) => x.sale).length, left: candidates().length, v: "1.5.0" };
+      sales: mine.filter((x) => x.sale).length, left: candidates().length, v: "1.6.0" };
   }
   function setOnline(ok, err) {
     const el = $("syncState");
@@ -1393,6 +1444,7 @@
     $("whoPc").textContent = "PC " + settings.pcNumber;
     $("pcNumber").disabled = !admin;
     if (!admin) setFocus(true);
+    if (admin && !users.loaded && !users.loading) loadUsers();
   }
 
   // ---------- admin panel: every PC at a glance, start/pause any of them ----------
@@ -1405,6 +1457,27 @@
     if (row) row.pending = desired;
     renderAdmin();
     cloudSoon(100, true);
+  }
+  // One link per PC: .../?pc=2 makes that browser PC 2.
+  let copiedPc = null, copiedTimer = null;
+  const pcLink = (pc) => location.href.split(/[?#]/)[0] + "?pc=" + pc;
+  async function copyText(text) {
+    try { await navigator.clipboard.writeText(text); return true; } catch { /* try the older way below */ }
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = text; ta.setAttribute("readonly", ""); ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      const ok = document.execCommand("copy"); ta.remove();
+      return ok;
+    } catch { return false; }
+  }
+  async function copyPcLink(pc) {
+    const ok = await copyText(pcLink(pc));
+    clearTimeout(copiedTimer);
+    copiedPc = ok ? pc : null;
+    if (ok) copiedTimer = setTimeout(() => { copiedPc = null; renderAdmin(); }, 2000);
+    else setStatus("wait", "Couldn't copy. The link for PC " + pc + " is: " + pcLink(pc));
+    renderAdmin();
   }
   function renderAdmin() {
     if (cloud.role !== "admin") return;
@@ -1425,7 +1498,7 @@
       const td = (t, cls) => { const c = document.createElement("td"); c.textContent = t; if (cls) c.className = cls; tr.appendChild(c); return c; };
       td(isMe ? `PC ${pc} (this PC)` : `PC ${pc}`);
       const onCell = td(on ? "Online" : (seen ? "Offline" : "Not signed in yet"), on ? "on" : "off");
-      onCell.title = seen ? "Last seen " + new Date(seen).toLocaleTimeString() : "";
+      onCell.title = seen ? "Last seen " + pacific(seen, { hour: "numeric", minute: "2-digit", second: "2-digit" }) + " Pacific time" : "";
       const want = row.pending || null;
       td(want ? (want === "run" ? "Starting…" : "Pausing…") : (on ? (runningNow ? "Dialing" : "Paused") : "—"), runningNow && on ? "run" : "");
       const live = isMe ? statusObj() : st;
@@ -1436,7 +1509,10 @@
       b1.disabled = runningNow && on; b1.addEventListener("click", () => adminCommand(pc, "run"));
       const b2 = document.createElement("button"); b2.type = "button"; b2.className = "btn tiny"; b2.textContent = "Pause";
       b2.disabled = !runningNow; b2.addEventListener("click", () => adminCommand(pc, "pause"));
-      act.append(b1, b2); tr.appendChild(act);
+      const b3 = document.createElement("button"); b3.type = "button"; b3.className = "btn tiny ghost"; b3.textContent = copiedPc === pc ? "Copied" : "Copy link";
+      b3.title = `Copy the link for PC ${pc}. Opened on that PC, it sets and remembers the PC number.`;
+      b3.addEventListener("click", () => copyPcLink(pc));
+      act.append(b1, b2, b3); tr.appendChild(act);
       body.appendChild(tr);
     }
     const sales = leads.filter((l) => l.sale).length;
@@ -1448,6 +1524,203 @@
   $("cNoAnswer").addEventListener("click", () => finishAppCall(false));
   $("btnAllStart").addEventListener("click", () => { for (let pc = 1; pc <= settings.pcCount; pc++) adminCommand(pc, "run"); });
   $("btnAllPause").addEventListener("click", () => { for (let pc = 1; pc <= Math.max(settings.pcCount, ...cloud.pcs.map((x) => x.pc)); pc++) adminCommand(pc, "pause"); });
+
+  // ---------- users (admin only): add people, change passwords and roles, remove them ----------
+  // Agents type a plain username; the sign-in behind it is username@skyhigh.dialer.
+  const USER_DOMAIN = "skyhigh.dialer";
+  const EMAIL_RE = /^[a-z0-9._%+-]+@[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}$/;
+  const toEmail = (login) => { const v = String(login || "").trim().toLowerCase(); return v && !v.includes("@") ? v + "@" + USER_DOMAIN : v; };
+  const shortLogin = (email) => { const v = String(email || ""); return v.endsWith("@" + USER_DOMAIN) ? v.slice(0, -USER_DOMAIN.length - 1) : v; };
+  const myEmail = () => String((Cloud.session && Cloud.session.email) || "").toLowerCase();
+  const users = { rows: [], loaded: false, loading: false, busy: false, pwFor: null, armed: null, armTimer: null };
+
+  function usersMsg(text, kind) { const el = $("usersMsg"); el.textContent = text || ""; el.className = "msg" + (kind ? " " + kind : ""); }
+  function loginProblem(email) {
+    if (!email) return "Type a username or an email.";
+    if (EMAIL_RE.test(email)) return "";
+    return email.endsWith("@" + USER_DOMAIN) ? "A username can only have letters, numbers, dots and dashes (no spaces)." : "That email doesn't look right.";
+  }
+  const pwProblem = (pw) => (!pw || pw.length < 8 ? "Passwords need at least 8 characters." : "");
+  // Plain words for the admin. cloud.js reads "not allowed" as signed out, so that wording is never shown from here.
+  function userError(err) {
+    const m = String((err && err.message) || "");
+    if (err && err.signedOut) { authLost(err); return "Please sign in again."; }
+    if (err && err.notAllowed) return "Only an admin can manage users.";
+    if (/could not find the function/i.test(m)) return "User management isn't switched on in the database yet. Run users.sql once in Supabase.";
+    if (/failed to fetch|networkerror|load failed/i.test(m)) return "Couldn't reach the server. Check the internet and try again.";
+    return m || "That didn't work. Try again.";
+  }
+  // Last sign-in is shown in Pacific time, never the PC's own time zone.
+  function lastSignIn(iso) {
+    const d = new Date(iso);
+    if (isNaN(d)) return "—";
+    const opts = { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" };
+    if (pacific(d, { year: "numeric" }) !== pacific(Date.now(), { year: "numeric" })) opts.year = "numeric";
+    return pacific(d, opts);
+  }
+
+  async function loadUsers(quiet) {
+    if (cloud.role !== "admin") return false;
+    users.loading = true;
+    try {
+      const rows = await Cloud.rpc("dialer_users", { p_action: "list" });
+      users.rows = Array.isArray(rows) ? rows : [];
+      users.loaded = true;
+      if (!quiet) usersMsg("");
+      return true;
+    } catch (err) {
+      usersMsg(userError(err), "bad");
+      return false;
+    } finally { users.loading = false; renderUsers(); }
+  }
+  // One change at a time: send it, then reload the list so the table shows what the database has.
+  async function usersDo(args, okText, onOk) {
+    if (users.busy) return false;
+    users.busy = true; $("usersBox").classList.add("busy");
+    usersMsg("Saving…");
+    try {
+      await Cloud.rpc("dialer_users", args);
+    } catch (err) {
+      users.busy = false; $("usersBox").classList.remove("busy");
+      usersMsg(userError(err), "bad");
+      return false;
+    }
+    if (onOk) onOk();
+    const fresh = await loadUsers(true);
+    users.busy = false; $("usersBox").classList.remove("busy");
+    usersMsg(fresh ? okText : okText + " Press Refresh to update the list.", "good");
+    return true;
+  }
+
+  function pwRow(u, name, isMe, keep) {
+    const tr = document.createElement("tr"); tr.className = "user-pw-row";
+    const cell = document.createElement("td"); cell.colSpan = 5;
+    const box = document.createElement("div"); box.className = "user-pw";
+    const lab = document.createElement("label"); lab.htmlFor = "userPwInput";
+    lab.textContent = isMe ? "Your new password" : `${u.login ? "New password" : "Password"} for ${name}`;
+    const wrap = document.createElement("span"); wrap.className = "pw-wrap";
+    const inp = document.createElement("input"); inp.id = "userPwInput"; inp.type = keep && keep.shown ? "text" : "password";
+    inp.maxLength = 72; inp.autocomplete = "new-password"; inp.placeholder = "8 or more characters";
+    if (keep) inp.value = keep.value;
+    const show = document.createElement("button"); show.type = "button"; show.className = "btn tiny ghost pw-show";
+    show.dataset.show = "userPwInput"; show.textContent = inp.type === "text" ? "Hide" : "Show";
+    wrap.append(inp, show);
+    const save = document.createElement("button"); save.type = "button"; save.className = "btn tiny primary"; save.textContent = "Save";
+    const cancel = document.createElement("button"); cancel.type = "button"; cancel.className = "btn tiny"; cancel.textContent = "Cancel";
+    const go = () => {
+      const bad = pwProblem(inp.value);
+      if (bad) { usersMsg(bad, "bad"); inp.focus(); return; }
+      usersDo({ p_action: "save", p_email: u.email, p_password: inp.value, p_role: u.role },
+        isMe ? "Your password is changed. Use the new one next time you sign in."
+          : u.login ? `Password changed for ${name}. They are signed out and need the new password.`
+            : `${name} can now sign in with the password you set.`,
+        () => { users.pwFor = null; });
+    };
+    const close = () => { users.pwFor = null; usersMsg(""); renderUsers(); };
+    save.addEventListener("click", go);
+    cancel.addEventListener("click", close);
+    inp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); go(); } else if (e.key === "Escape") close(); });
+    box.append(lab, wrap, save, cancel); cell.appendChild(box); tr.appendChild(cell);
+    return tr;
+  }
+
+  function renderUsers() {
+    if (cloud.role !== "admin") return;
+    // keep a half-typed password when the table is redrawn
+    const old = $("userPwInput");
+    const keep = old ? { value: old.value, shown: old.type === "text", focus: document.activeElement === old } : null;
+    const body = $("userRows"); body.textContent = "";
+    const me = myEmail();
+    const n = users.rows.length, can = users.rows.filter((u) => u.login).length;
+    $("usersSum").textContent = users.loaded ? `${n} user${n === 1 ? "" : "s"} · ${can} can sign in` : "Loading…";
+    for (const u of users.rows) {
+      const isMe = u.email === me;
+      const name = shortLogin(u.email);
+      const tr = document.createElement("tr");
+      const td = (t, cls) => { const c = document.createElement("td"); if (t != null) c.textContent = t; if (cls) c.className = cls; tr.appendChild(c); return c; };
+      td(isMe ? name + " (you)" : name, isMe ? "you" : "").title = u.email;
+
+      const sel = document.createElement("select"); sel.setAttribute("aria-label", "Role for " + name);
+      const opts = [["agent", "Agent"], ["admin", "Admin"]];
+      if (!u.role) opts.unshift(["", "No access"]);
+      for (const [v, t] of opts) { const o = document.createElement("option"); o.value = v; o.textContent = t; sel.appendChild(o); }
+      sel.value = u.role || "";
+      sel.disabled = isMe;
+      if (isMe) sel.title = "You can't change your own role.";
+      sel.addEventListener("change", async () => {
+        if (!sel.value) return;
+        const ok = await usersDo({ p_action: "save", p_email: u.email, p_password: null, p_role: sel.value },
+          `${name} is now ${sel.value === "admin" ? "an admin" : "an agent"}.`);
+        if (!ok) renderUsers(); // put the old role back on screen
+      });
+      td(null).appendChild(sel);
+
+      td(u.login ? "Yes" : "No password yet", u.login ? "on" : "off");
+      td(u.last ? lastSignIn(u.last) : (u.login ? "Never" : "—"), u.last ? "" : "off");
+
+      const act = td(null, "row-actions");
+      const bp = document.createElement("button"); bp.type = "button"; bp.className = "btn tiny";
+      bp.textContent = u.login ? "New password" : "Set password";
+      bp.disabled = !u.role;
+      if (!u.role) bp.title = "Pick a role first.";
+      bp.addEventListener("click", () => {
+        users.pwFor = users.pwFor === u.email ? null : u.email; users.armed = null;
+        renderUsers();
+        const i = $("userPwInput"); if (i) i.focus();
+      });
+      act.appendChild(bp);
+      if (!isMe) {
+        const armed = users.armed === u.email;
+        const br = document.createElement("button"); br.type = "button"; br.className = "btn tiny danger" + (armed ? " armed" : "");
+        br.textContent = armed ? "Confirm remove" : "Remove";
+        br.addEventListener("click", () => {
+          clearTimeout(users.armTimer);
+          if (users.armed === u.email) {
+            users.armed = null;
+            usersDo({ p_action: "remove", p_email: u.email }, `Removed ${name}.`, () => { if (users.pwFor === u.email) users.pwFor = null; });
+            return;
+          }
+          users.armed = u.email; renderUsers();
+          users.armTimer = setTimeout(() => { if (users.armed === u.email) { users.armed = null; renderUsers(); } }, 4000);
+        });
+        act.appendChild(br);
+      }
+      body.appendChild(tr);
+      if (users.pwFor === u.email) body.appendChild(pwRow(u, name, isMe, keep));
+    }
+    if (users.loaded && !n) {
+      const tr = document.createElement("tr"); const c = document.createElement("td");
+      c.colSpan = 5; c.className = "off"; c.textContent = "No users yet."; tr.appendChild(c); body.appendChild(tr);
+    }
+    if (keep && keep.focus) { const i = $("userPwInput"); if (i) i.focus(); }
+  }
+
+  $("userAddForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const email = toEmail($("uLogin").value), pw = $("uPw").value, role = $("uRole").value;
+    const name = shortLogin(email);
+    const bad = loginProblem(email) || pwProblem(pw);
+    if (bad) { usersMsg(bad, "bad"); return; }
+    if (users.rows.some((u) => u.email === email && u.login)) {
+      usersMsg(`${name} already has a sign-in. Use New password on their row to change it.`, "bad");
+      return;
+    }
+    const ok = await usersDo({ p_action: "save", p_email: email, p_password: pw, p_role: role },
+      `Added ${name}. They sign in with "${name}" and the password you set.`);
+    if (ok) {
+      $("uLogin").value = ""; $("uPw").value = ""; $("uPw").type = "password"; $("uRole").value = "agent";
+      const sh = $("userAddForm").querySelector(".pw-show"); if (sh) sh.textContent = "Show";
+    }
+  });
+  $("btnUsersRefresh").addEventListener("click", () => loadUsers());
+  // Show / Hide for the password boxes
+  $("usersBox").addEventListener("click", (e) => {
+    const b = e.target.closest(".pw-show");
+    const inp = b && $(b.dataset.show);
+    if (!inp) return;
+    inp.type = inp.type === "password" ? "text" : "password";
+    b.textContent = inp.type === "password" ? "Show" : "Hide";
+  });
 
   // ---------- sign in ----------
   // A link ending in ?pc=2 makes this browser PC 2 (one link per PC).
@@ -1469,7 +1742,7 @@
     const btn = $("loginBtn"); btn.disabled = true;
     $("loginMsg").className = "msg"; $("loginMsg").textContent = "Signing in…";
     try {
-      await Cloud.signIn($("loginEmail").value, $("loginPw").value);
+      await Cloud.signIn(toEmail($("loginEmail").value), $("loginPw").value); // "ali" -> ali@skyhigh.dialer
       const pc = clamp($("loginPc").value, 1, 50, 1);
       try { localStorage.setItem("shd-pc", String(pc)); } catch { /* ignore */ }
       $("loginPw").value = "";
@@ -1494,7 +1767,8 @@
     let pc = settings.pcNumber;
     try { pc = clamp(localStorage.getItem("shd-pc") || pc, 1, 50, 1); } catch { /* ignore */ }
     settings.pcNumber = pc;
-    $("whoEmail").textContent = (Cloud.session && Cloud.session.email) || "";
+    $("whoEmail").textContent = shortLogin((Cloud.session && Cloud.session.email) || "");
+    users.rows = []; users.loaded = false; users.pwFor = null; users.armed = null; // a different person may have signed in
     fillSettingsForm();
     await cloudStart();
   }
