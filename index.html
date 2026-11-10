@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sky High Dialer</title>
+<meta name="color-scheme" content="light dark">
+<link rel="stylesheet" href="dialer.css">
+<script src="theme.js"></script>
+</head>
+<body class="signed-out">
+<div class="login" id="login" hidden>
+  <form class="login-card" id="loginForm" autocomplete="on">
+    <div class="brand"><span class="mark" aria-hidden="true"></span><div class="brand-name">Sky High Dialer</div></div>
+    <h1>Sign in</h1>
+    <label for="loginEmail">Email</label>
+    <input id="loginEmail" type="email" autocomplete="username" required>
+    <label for="loginPw">Password</label>
+    <input id="loginPw" type="password" autocomplete="current-password" required>
+    <label for="loginPc">This PC is number</label>
+    <input id="loginPc" type="number" min="1" max="50" step="1" value="1" required>
+    <p class="hint">Give every PC a different number: 1, 2, 3…</p>
+    <button id="loginBtn" class="btn primary" type="submit">Sign in</button>
+    <p class="msg" id="loginMsg" role="status"></p>
+  </form>
+</div>
+<header class="bar">
+  <div class="brand">
+    <span class="mark" aria-hidden="true"></span>
+    <div>
+      <div class="brand-name">Sky High Dialer</div>
+      <div class="brand-sub">Caller ID (209) 222-9022 · <span id="whoRole"></span> · <span id="whoPc"></span> · <span id="syncState" class="sync">…</span></div>
+    </div>
+  </div>
+
+  <div class="status" id="statusBox" data-state="idle">
+    <span class="dot" aria-hidden="true"></span>
+    <span id="statusText">Press Add sheet, then Start dialing.</span>
+  </div>
+
+  <div class="controls">
+    <button id="btnStart" class="btn primary" type="button">Start dialing</button>
+    <button id="btnPause" class="btn" type="button" hidden>Pause</button>
+    <button id="btnSkip" class="btn ghost" type="button" title="Stop waiting on the current lead and move on">Skip lead</button>
+    <button id="btnView" class="btn ghost" type="button">Customer view</button>
+    <button id="btnTheme" class="btn ghost" type="button" title="Switch between light and dark">Dark mode</button>
+    <button id="btnSignOut" class="btn ghost" type="button" title="Sign out of the dialer on this PC"><span id="whoEmail" class="who"></span> Sign out</button>
+  </div>
+</header>
+
+<main class="layout">
+  <section class="leads" aria-label="Lead list">
+    <div class="toolbar">
+      <div class="counts" id="counts"></div>
+      <div class="toolbar-actions">
+        <button id="btnImport" class="btn small" type="button">Add sheet</button>
+        <button id="btnStates" class="btn small ghost" type="button">States</button>
+        <button id="btnDnc" class="btn small ghost" type="button">Do Not Call</button>
+        <button id="btnSettings" class="btn small ghost" type="button">Settings</button>
+        <button id="btnRestart" class="btn small ghost danger" type="button" title="Set every customer back to Not called and dial the list again from the top. Download your results first if you need them.">Start over</button>
+        <button id="btnCopy" class="btn small ghost" type="button">Copy results</button>
+        <button id="btnCsv" class="btn small ghost" type="button">Download CSV</button>
+      </div>
+    </div>
+
+    <div class="panel admin-panel" id="adminPanel">
+      <div class="admin-head">
+        <h2>All PCs <span class="chip" id="adminSum"></span></h2>
+        <div class="admin-btns">
+          <button id="btnAllStart" class="btn small primary" type="button">Start all</button>
+          <button id="btnAllPause" class="btn small" type="button">Pause all</button>
+        </div>
+      </div>
+      <div class="admin-wrap">
+        <table class="admin-table">
+          <thead><tr><th>PC</th><th>Online</th><th>Dialer</th><th>Now</th><th>Called</th><th>Sales</th><th>Left</th><th></th></tr></thead>
+          <tbody id="adminRows"></tbody>
+        </table>
+      </div>
+      <p class="hint">Agent PCs sign in with the agent login and pick their PC number. Sheets, settings, states and Start over are only here; agents see the customer card, Start/Pause, Sale made and Do not call.</p>
+    </div>
+
+    <div class="sheets" id="sheets" aria-label="Sheets being dialed"></div>
+
+    <div class="panel" id="importPanel" hidden>
+      <h2>Add a sheet</h2>
+      <div class="import-col">
+        <label for="sheetName">Name for this sheet (optional)</label>
+        <input id="sheetName" type="text" maxlength="40" placeholder="e.g. Monday list">
+      </div>
+      <div class="import-col upload">
+        <label for="fileInput">Upload an Excel or CSV file</label>
+        <input id="fileInput" type="file" accept=".xlsx,.csv,.tsv,.txt">
+        <p class="hint">Reads the tab named "Dial List" if there is one, otherwise the first tab.</p>
+      </div>
+      <div class="import-grid">
+        <div class="import-col">
+          <label for="sheetUrl">Or paste a Google Sheets link</label>
+          <input id="sheetUrl" type="url" placeholder="https://docs.google.com/spreadsheets/d/…/edit#gid=0">
+          <p class="hint">Works only if the sheet is shared as "Anyone with the link can view". Otherwise download it as .xlsx and upload it.</p>
+          <button id="btnFetch" class="btn small primary" type="button">Add from link</button>
+        </div>
+        <div class="import-col">
+          <label for="pasteBox">Or copy the rows (include the header row) and paste here</label>
+          <textarea id="pasteBox" rows="6" placeholder="Name&#9;Phone&#9;State&#10;John Smith&#9;(720) 620-8525&#9;CO"></textarea>
+          <button id="btnPaste" class="btn small primary" type="button">Add pasted rows</button>
+        </div>
+      </div>
+      <p class="hint">Columns are found by their header: a <b>phone / number</b> column is required; <b>name</b> and <b>state</b> are optional. State lets the dialer skip people outside 8am–9pm their time.</p>
+      <p class="msg" id="importMsg" role="status"></p>
+    </div>
+
+    <div class="panel" id="statePanel" hidden>
+      <h2>States to dial <span class="chip" id="stateSummary"></span></h2>
+      <p class="hint">Only ticked states are dialed. To dial just a few: press <b>Clear all</b>, then tick the ones you want. Customers in unticked states stay on the list as "State off". Each box shows how many customers are left there and the time there now (orange = outside 8am–9pm).</p>
+      <div class="state-actions">
+        <button id="btnStatesAll" class="btn tiny" type="button">Select all</button>
+        <button id="btnStatesNone" class="btn tiny" type="button">Clear all</button>
+        <label class="state-blank"><input id="blankState" type="checkbox" checked> Also dial customers with no state <span class="state-meta" id="blankStateCount"></span></label>
+      </div>
+      <div class="state-grid" id="stateGrid"></div>
+    </div>
+
+    <div class="panel" id="dncPanel" hidden>
+      <h2>Do Not Call list <span class="chip" id="dncCount">empty</span></h2>
+      <p class="hint">Numbers here are never dialed, by the dialer or the Call button, even if they're on a sheet you add later. During a call you can also press <b>Do not call again</b> on the customer card, or <b>DNC</b> on a row.</p>
+      <div class="import-grid">
+        <div class="import-col">
+          <label for="dncBox">Paste numbers (any format, one or many)</label>
+          <textarea id="dncBox" rows="4" placeholder="(720) 620-8525&#10;303-555-0104"></textarea>
+          <button id="btnDncAdd" class="btn small primary" type="button">Add to Do Not Call</button>
+        </div>
+        <div class="import-col">
+          <label for="dncFile">Or upload a file of numbers (Excel or CSV)</label>
+          <input id="dncFile" type="file" accept=".xlsx,.csv,.tsv,.txt">
+          <p class="hint">Every phone number found in the file is added.</p>
+          <button id="btnDncCsv" class="btn small ghost" type="button">Download the list</button>
+          <p class="hint">The list is shared with every PC automatically.</p>
+        </div>
+      </div>
+      <input id="dncSearch" type="text" placeholder="Search the list by number" aria-label="Search Do Not Call list">
+      <div class="dnc-list" id="dncList"></div>
+      <p class="msg" id="dncMsg" role="status"></p>
+    </div>
+
+    <div class="panel" id="settingsPanel" hidden>
+      <h2>Settings</h2>
+      <div class="settings-grid">
+        <h3>Dialing</h3>
+        <label for="gapSec">Speed: wait this many seconds before each next call</label>
+        <span><input id="gapSec" type="number" min="1" max="600" step="1" value="4"> seconds</span>
+
+        <label for="maxAttempts">Tries per number (if it doesn't answer)</label>
+        <select id="maxAttempts"><option>1</option><option selected>2</option><option>3</option><option>4</option><option>5</option></select>
+
+        <label for="retryMode">When a number doesn't answer</label>
+        <select id="retryMode">
+          <option value="now" selected>Redial it right away</option>
+          <option value="later">Try the rest of the list first, then redial</option>
+        </select>
+
+        <label for="hoursGuard">Only call 8am–9pm in the lead's time zone</label>
+        <input id="hoursGuard" type="checkbox" checked>
+
+        <h3>Several PCs dialing the same sheets</h3>
+        <label for="pcCount">How many PCs are dialing</label>
+        <input id="pcCount" type="number" min="1" max="20" step="1" value="1">
+
+        <label for="pcNumber">This PC is number</label>
+        <input id="pcNumber" type="number" min="1" max="20" step="1" value="1">
+      </div>
+      <p class="hint"><b>Several PCs:</b> sheets and settings are shared with every PC automatically. Each PC picks its own number when it signs in (1 to "How many PCs"). Each phone number belongs to exactly one PC, so no number is dialed twice. Set this before you start and don't change it mid-day.</p>
+      <p class="hint">A call counts as <b>answered</b> when Zoom reports it connected. Voicemail picking up also counts as answered; hang up and use <b>Retry</b> on that row if you want it redialed.</p>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>#</th><th>Name</th><th>Phone</th><th>Sheet</th><th>Local time</th><th>Tries</th><th>Result</th><th></th></tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <div class="empty" id="empty">
+        <p><b>No leads yet.</b></p>
+        <p>Press <b>Add sheet</b> and paste your Google Sheet link or rows. You can add more sheets later.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="focus" aria-label="Current customer">
+    <div class="card" id="card" hidden>
+      <div class="card-top">
+        <span class="pill" id="cStatus"></span>
+        <span class="card-left" id="cLeft"></span>
+      </div>
+      <div class="card-name" id="cName"></div>
+      <div class="card-phone" id="cPhone"></div>
+      <dl class="card-facts card-details" id="cFacts"></dl>
+      <div class="card-comments" id="cCommentsWrap" hidden>
+        <div class="card-comments-h">Comments</div>
+        <textarea id="cComments" class="edit comments"></textarea>
+      </div>
+      <dl class="card-facts card-meta" id="cMeta"></dl>
+      <div class="card-check" id="cCheckWrap" hidden>
+        <div class="card-check-h">Check with the customer</div>
+        <div id="cCheck"></div>
+      </div>
+      <div class="card-actions">
+        <div class="card-next" id="cNext"></div>
+        <div class="card-btns">
+          <button id="cSale" class="btn small sale" type="button" title="Mark this customer as a sale. Sales are never auto-dialed again.">Sale made</button>
+          <button id="cDnc" class="btn small danger" type="button" title="Add this number to the Do Not Call list">Do not call again</button>
+        </div>
+      </div>
+    </div>
+    <div class="card card-empty" id="cardEmpty">
+      <p><b>Waiting for the first call.</b></p>
+      <p>The customer's details show here while you're dialing.</p>
+    </div>
+  </section>
+
+  <aside class="phone" aria-label="Zoom Phone">
+    <div class="phone-head">
+      <span>Zoom Phone</span>
+      <span class="phone-state" id="zoomState">Loading…</span>
+    </div>
+    <iframe id="zoom-embeddable-phone-iframe" title="Zoom Phone"
+      allow="microphone; camera; autoplay; clipboard-read; clipboard-write"></iframe>
+    <p class="hint phone-hint">Sign in here once with your Zoom account. Calls are placed from this panel.</p>
+  </aside>
+</main>
+
+<script src="states.js"></script>
+<script src="xlsx.js"></script>
+<script src="cloud.js"></script>
+<script src="dialer.js"></script>
+</body>
+</html>
