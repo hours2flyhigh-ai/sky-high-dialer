@@ -870,33 +870,50 @@
     if (multi) requestAnimationFrame(() => grow(el));
     return el;
   }
+  // One box with the 21 details as "Label : value" lines. Edit any value in place; it saves as you type.
+  const BOX_LABELS = { phone: "Phone Number", name: "Full Name", dob: "DOB", age: "Age", gender: "Gender", bornState: "Born State",
+    height: "Height", weight: "Weight", smoking: "Smoking Status", health: "Health Issues", meds: "Medications",
+    address: "Mailing Address", plan: "Plan Type", carrier: "Carrier", ssn: "SSN", benef: "Beneficiary",
+    draft: "Future Draft Date", acctType: "Account Type", bank: "Bank Name", routing: "Routing number", checking: "Checking Account" };
+  const BOX_PAD = 18;
+  function boxText(l) {
+    const det = detailsOf(l);
+    return DETAIL_FIELDS.map((f) => {
+      const lab = BOX_LABELS[f.key] || f.label;
+      let v = det[f.key] || "";
+      if (f.key === "phone") v = l.display || v;
+      return (lab + " ".repeat(Math.max(1, BOX_PAD - lab.length))) + ": " + String(v).replace(/\s*\n\s*/g, " ");
+    }).join("\n");
+  }
+  const BOX_KEY = (() => { const m = {}; for (const f of DETAIL_FIELDS) { m[(BOX_LABELS[f.key] || f.label).toLowerCase()] = f.key; m[f.label.toLowerCase()] = f.key; } return m; })();
+  function applyBox(l, text) {
+    const det = detailsOf(l);
+    for (const line of text.split("\n")) {
+      const m = line.match(/^\s*([A-Za-z][A-Za-z .]*?)\s*:\s?(.*)$/);
+      if (!m) continue;
+      const lab = m[1].replace(/\s+/g, " ").trim().toLowerCase();
+      const key = BOX_KEY[lab] || (fieldFor(lab) || {}).key;
+      if (!key) continue;
+      const val = m[2].trim();
+      const cur = key === "phone" ? (l.display || det.phone || "") : (det[key] || "");
+      if (val !== cur) applyEdit(l, key, val);
+    }
+  }
   function buildEditor(l) {
-    const dl = $("cFacts");
-    if (editorFor === l.id && dl.childElementCount) {
-      // Same customer: refresh only fields nobody is typing in.
-      for (const el of dl.querySelectorAll(".edit")) {
-        if (el === document.activeElement) continue;
-        const v = (detailsOf(l)[el.dataset.key] || "");
-        if (el.value !== v) { el.value = v; if (el.tagName === "TEXTAREA") grow(el); }
-      }
-      const c = $("cComments");
-      if (c !== document.activeElement && c.value !== (l.comments || "")) { c.value = l.comments || ""; grow(c); }
+    const box = $("cBox");
+    if (editorFor === l.id) {
+      if (box !== document.activeElement) { const t = boxText(l); if (box.value !== t) { box.value = t; grow(box); } }
       return;
     }
     editorFor = l.id;
-    dl.textContent = "";
-    const det = detailsOf(l);
-    for (const f of DETAIL_FIELDS) {
-      const dt = document.createElement("dt"); dt.textContent = f.label;
-      const dd = document.createElement("dd");
-      dd.appendChild(makeInput(l, f.key, det[f.key], MULTI.has(f.key), "—"));
-      dl.append(dt, dd);
-    }
-    const old = $("cComments");
-    const c = makeInput(l, "comments", l.comments, true, "Add a comment…");
-    c.id = "cComments"; c.classList.add("comments");
-    old.replaceWith(c);
-    $("cCommentsWrap").hidden = false;
+    box.value = boxText(l);
+    box.oninput = () => { applyBox(l, box.value); grow(box); };
+    box.onchange = () => {
+      const bad = (box.value.match(/^\s*Phone Number\s*:\s?(.*)$/im) || [])[1];
+      if (bad && !toE164(bad)) setStatus("error", "That phone number doesn't look right. The dialer keeps using the old one.");
+      store.save(); render();
+    };
+    requestAnimationFrame(() => grow(box));
   }
   function renderCard() {
     const l = cardLead();
@@ -908,6 +925,9 @@
     const pill = $("cStatus");
     pill.className = "pill " + l.status;
     pill.textContent = countdown && countdown.leadId === l.id ? "Up next" : (LABEL[l.status] || l.status);
+    const lt = localTimeText(l);
+    $("cTime").textContent = lt && lt !== "—" ? "Customer time: " + lt : "Customer time: unknown (no state)";
+    $("cTime").classList.toggle("off", !!(l.state && !inHours(l)));
     shownLeadId = l.id;
     buildEditor(l);
     const addRow = (box, k, v) => {

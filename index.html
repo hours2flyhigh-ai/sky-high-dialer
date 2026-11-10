@@ -191,11 +191,13 @@
     <div class="card" id="card" hidden>
       <div class="card-top">
         <span class="pill" id="cStatus"></span>
+        <span class="cx-time" id="cTime"></span>
         <span class="card-left" id="cLeft"></span>
       </div>
       <div class="card-name" id="cName"></div>
       <div class="card-phone" id="cPhone"></div>
-      <dl class="card-facts card-details" id="cFacts"></dl>
+      <dl class="card-facts card-details" id="cFacts" hidden></dl>
+      <textarea id="cBox" class="detail-box" spellcheck="false" aria-label="Customer details"></textarea>
       <div class="card-comments" id="cCommentsWrap" hidden>
         <div class="card-comments-h">Comments</div>
         <textarea id="cComments" class="edit comments"></textarea>

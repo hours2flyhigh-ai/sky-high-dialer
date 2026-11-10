@@ -240,3 +240,14 @@ body:not(.role-admin) .admin-panel { display: none; }
 .admin-table td.off { color: var(--muted); }
 .admin-table td.run { color: var(--accent); font-weight: 600; }
 .admin-table td.admin-now { white-space: normal; min-width: 180px; color: var(--muted); }
+
+/* One-box customer details (v1.4.1): only the 21 fields, nothing else */
+.card-name, .card-phone, .card-left, #cCommentsWrap, #cMeta, #cCheckWrap, .card-next, #cFacts { display: none !important; }
+.detail-box { width: 100%; box-sizing: border-box; resize: none; overflow: hidden; min-height: 420px;
+  font-family: var(--mono); font-size: 15px; line-height: 1.75; color: var(--fg); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; white-space: pre; overflow-x: auto; }
+.detail-box:focus { outline: none; border-color: var(--accent); }
+.card-actions { justify-content: flex-end; }
+.card-top { justify-content: flex-start; gap: 14px; }
+.cx-time { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.cx-time.off { color: var(--warn); }
