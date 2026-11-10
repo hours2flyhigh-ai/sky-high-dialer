@@ -901,6 +901,7 @@
   }
   function buildEditor(l) {
     const box = $("cBox");
+    if (!box) return;
     if (editorFor === l.id) {
       if (box !== document.activeElement) { const t = boxText(l); if (box.value !== t) { box.value = t; grow(box); } }
       return;
@@ -926,8 +927,11 @@
     pill.className = "pill " + l.status;
     pill.textContent = countdown && countdown.leadId === l.id ? "Up next" : (LABEL[l.status] || l.status);
     const lt = localTimeText(l);
-    $("cTime").textContent = lt && lt !== "—" ? "Customer time: " + lt : "Customer time: unknown (no state)";
-    $("cTime").classList.toggle("off", !!(l.state && !inHours(l)));
+    const ct = $("cTime");
+    if (ct) {
+      ct.textContent = lt && lt !== "—" ? "Customer time: " + lt : "Customer time: unknown (no state)";
+      ct.classList.toggle("off", !!(l.state && !inHours(l)));
+    }
     shownLeadId = l.id;
     buildEditor(l);
     const addRow = (box, k, v) => {
@@ -1430,6 +1434,8 @@
   });
 
   async function bootApp() {
+    $("login").hidden = true;
+    document.body.classList.remove("signed-out");
     applySaved(await store.get());
     let pc = settings.pcNumber;
     try { pc = clamp(localStorage.getItem("shd-pc") || pc, 1, 50, 1); } catch { /* ignore */ }
