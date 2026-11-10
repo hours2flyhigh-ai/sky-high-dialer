@@ -251,3 +251,8 @@ body:not(.role-admin) .admin-panel { display: none; }
 .card-top { justify-content: flex-start; gap: 14px; }
 .cx-time { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .cx-time.off { color: var(--warn); }
+
+/* Zoom-app calling (v1.5): answered / no answer buttons */
+.card-call { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px 12px; border-radius: 10px; background: var(--row-hl); }
+.card-call[hidden] { display: none; }
+.card-call-h { font-weight: 600; font-size: 13px; margin-right: 4px; }

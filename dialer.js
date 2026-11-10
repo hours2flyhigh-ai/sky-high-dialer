@@ -24,7 +24,7 @@
   let sheets = [];         // {id, name, active}  each sheet the dialer pulls leads from
   let dnc = new Set();     // Do Not Call: last 10 digits of numbers that must never be dialed
   const SETTINGS_VERSION = 2;
-  let settings = { v: SETTINGS_VERSION, maxAttempts: 2, retryMode: "now", gapSec: 4, hoursGuard: true, pcCount: 1, pcNumber: 1,
+  let settings = { v: SETTINGS_VERSION, maxAttempts: 2, retryMode: "now", gapSec: 4, hoursGuard: true, pcCount: 1, pcNumber: 1, callVia: "app",
     statesOnly: null,      // null = dial every state; otherwise only these state codes
     blankState: true };    // dial customers whose state is unknown
   let running = false;
@@ -410,7 +410,8 @@
   const isInbound = (d) => String(d.direction || "").toLowerCase() === "inbound";
   const calleeMatches = (d, lead) => {
     const n = d.callee && (d.callee.phoneNumber || d.callee.number);
-    return !n || last10(n) === last10(lead.phone);
+    if (!n) return settings.callVia === "panel"; // calls from other PCs share this Zoom login: need the number to be sure
+    return last10(n) === last10(lead.phone);
   };
   const leadById = (id) => leads.find((l) => l.id === id);
 
@@ -465,7 +466,7 @@
     const n = d.callee && (d.callee.number || d.callee.phoneNumber);
     if (!n || isInbound(d)) return;
     const lead = leads.find((l) => last10(l.phone) === last10(n));
-    if (lead && d.result && lead.status !== "live") { lead.result = String(d.result); store.save(); render(); }
+    if (lead && isMine(lead) && d.result && lead.status !== "live") { lead.result = String(d.result); store.save(); render(); }
   }
 
   // ---------- dialing engine ----------
@@ -533,9 +534,16 @@
     lead.status = "dialing";
     lastLeadId = lead.id;
     current = { leadId: lead.id, callId: null, connected: false, startedAt: Date.now() };
+    clearTimeout(watchdog);
+    if (settings.callVia !== "panel") {
+      // The Zoom app on this PC places the call, so it never goes to another PC's Zoom.
+      setStatus("dialing", `Calling ${lead.name || lead.display} in the Zoom app on this PC (try ${lead.attempts} of ${settings.maxAttempts}). When the call ends, press Answered or No answer.`);
+      openZoomApp(lead.phone);
+      store.save(); render();
+      return;
+    }
     setStatus("dialing", `Dialing ${lead.name || lead.display} (try ${lead.attempts} of ${settings.maxAttempts})`);
     zoomPost({ type: "zp-make-call", number: lead.phone, autoDial: true, data: { number: lead.phone, autoDial: true } });
-    clearTimeout(watchdog);
     watchdog = setTimeout(() => {
       if (!current || current.leadId !== lead.id || lead.status !== "dialing") return;
       lead.status = "error"; lead.result = "Zoom didn't start the call";
@@ -546,12 +554,40 @@
     store.save(); render();
   }
 
+  // ---------- calling through the Zoom app on this PC ----------
+  let zoomLaunchAt = 0;
+  function openZoomApp(e164) {
+    zoomLaunchAt = Date.now();
+    const num = String(e164 || "").replace(/[^\d+]/g, "");
+    try { window.location.href = "zoomphonecall://" + num; } catch { /* ignore */ }
+  }
+  // The agent tells the dialer how the call went (used when the Zoom panel isn't reporting calls).
+  function finishAppCall(answered) {
+    if (!current) return;
+    const lead = leadById(current.leadId);
+    clearTimeout(watchdog);
+    if (lead) {
+      lead.lastCall = new Date().toLocaleString();
+      if (lead.sale) { lead.status = "sale"; lead.result = "Sale made"; }
+      else if (answered || current.connected) { lead.status = "talked"; lead.result = "Answered"; }
+      else { lead.result = "No answer"; lead.status = lead.attempts >= settings.maxAttempts ? "noanswer" : "retry"; }
+    }
+    current = null;
+    store.save(); render();
+    if (running) afterCall(); else setStatus("idle", "Paused.");
+  }
+  const hangUpWhere = () => (settings.callVia === "panel" ? "the Zoom panel" : "the Zoom app");
+
   function start(fromCloud) {
     if (!leads.length) { if (cloud.role === "admin") $("importPanel").hidden = false; setStatus("idle", cloud.role === "admin" ? "Add a sheet first." : "No customers yet. The admin adds the sheets."); return; }
     running = true; setFocus(true); syncButtons();
     if (fromCloud !== true) cloudDesire("run");
     if (current) { setStatus("live", "On a call. Dialing resumes after it ends."); return; }
     if (inboundBusy) { setStatus("wait", "Incoming call. Dialer is holding."); return; }
+    if (settings.callVia !== "panel" && fromCloud !== true) {
+      const n = pickNext();
+      if (n.lead) { cancelCountdown(); dial(n.lead); return; }
+    }
     scheduleNext();
   }
   function pause(fromCloud) {
@@ -572,12 +608,12 @@
     }
     if (current) {
       const lead = leadById(current.leadId);
-      if (lead && lead.status === "live") { setStatus("live", "You're on a live call. Hang up in the Zoom panel to move on."); return; }
+      if (lead && lead.status === "live") { setStatus("live", `You're on a live call. Hang up in ${hangUpWhere()} to move on.`); return; }
       clearTimeout(watchdog);
       if (lead) { lead.status = "skipped"; lead.result = "Skipped"; }
       current = null;
       store.save(); render();
-      setStatus("wait", "Skipped. Hang up the ringing call in the Zoom panel if it's still going.");
+      setStatus("wait", `Skipped. Hang up the ringing call in ${hangUpWhere()} if it's still going.`);
       if (running) setTimeout(afterCall, 1500);
     }
   }
@@ -967,6 +1003,8 @@
     $("cDnc").textContent = onDnc ? "On Do Not Call (undo)" : "Do not call again";
     $("cDnc").classList.toggle("armed", onDnc);
     $("cDnc").onclick = () => toggleDnc(l);
+    const appCall = settings.callVia !== "panel" && current && current.leadId === l.id;
+    const cb = $("cCallBtns"); if (cb) cb.hidden = !appCall;
     $("cSale").textContent = l.sale ? "Sale made ✓ (undo)" : "Sale made";
     $("cSale").classList.toggle("armed", !!l.sale);
     $("cSale").onclick = () => toggleSale(l);
@@ -1067,6 +1105,7 @@
     settings.retryMode = $("retryMode").value;
     settings.gapSec = clamp($("gapSec").value, 1, 600, 4);
     settings.hoursGuard = $("hoursGuard").checked;
+    settings.callVia = $("callVia").value === "panel" ? "panel" : "app";
     settings.pcCount = clamp($("pcCount").value, 1, 20, 1);
     settings.pcNumber = clamp($("pcNumber").value, 1, settings.pcCount, 1);
     $("gapSec").value = String(settings.gapSec);
@@ -1077,7 +1116,7 @@
     $("whoPc").textContent = "PC " + settings.pcNumber;
     store.save(); render(); renderAdmin();
   }
-  for (const id of ["maxAttempts", "retryMode", "gapSec", "hoursGuard", "pcCount", "pcNumber"]) $(id).addEventListener("change", readSettings);
+  for (const id of ["maxAttempts", "retryMode", "gapSec", "hoursGuard", "callVia", "pcCount", "pcNumber"]) $(id).addEventListener("change", readSettings);
 
   // ---------- theme ----------
   const darkQuery = window.matchMedia("(prefers-color-scheme: dark)");
@@ -1092,7 +1131,10 @@
   darkQuery.addEventListener("change", syncThemeBtn);
   syncThemeBtn();
 
-  window.addEventListener("beforeunload", (e) => { if (running || current) { e.preventDefault(); e.returnValue = ""; } });
+  window.addEventListener("beforeunload", (e) => {
+    if (Date.now() - zoomLaunchAt < 3000) return; // opening the Zoom app, not leaving
+    if (running || current) { e.preventDefault(); e.returnValue = ""; }
+  });
   setInterval(() => { if (!current) render(); }, 60000); // keep local times fresh
 
   // ---------- boot ----------
@@ -1124,6 +1166,10 @@
     $("retryMode").value = settings.retryMode;
     $("gapSec").value = String(settings.gapSec);
     $("hoursGuard").checked = settings.hoursGuard;
+    $("callVia").value = settings.callVia === "panel" ? "panel" : "app";
+    $("phoneHint").textContent = settings.callVia === "panel"
+      ? "Sign in here once with your Zoom account. Calls are placed from this panel."
+      : "Calls are made by the Zoom app on this PC. Signing in here is optional: it lets the dialer see by itself when calls are answered or end.";
     $("pcCount").value = String(settings.pcCount);
     $("pcNumber").value = String(settings.pcNumber);
     $("pcNumber").max = String(settings.pcCount);
@@ -1147,7 +1193,7 @@
     const l = current ? leadById(current.leadId) : null;
     return { running, state: $("statusBox").dataset.state, text: $("statusText").textContent.slice(0, 120),
       lead: l ? (l.name || l.display) : "", called: mine.filter((x) => x.attempts > 0).length,
-      sales: mine.filter((x) => x.sale).length, left: candidates().length, v: "1.4.0" };
+      sales: mine.filter((x) => x.sale).length, left: candidates().length, v: "1.5.0" };
   }
   function setOnline(ok, err) {
     const el = $("syncState");
@@ -1397,10 +1443,18 @@
     const called = leads.filter((l) => l.attempts > 0).length;
     $("adminSum").textContent = `${online} online · ${dialing} dialing · ${called} called · ${sales} sale${sales === 1 ? "" : "s"}`;
   }
+  $("cZoomOpen").addEventListener("click", () => { const l = current && leadById(current.leadId); if (l) openZoomApp(l.phone); });
+  $("cAnswered").addEventListener("click", () => finishAppCall(true));
+  $("cNoAnswer").addEventListener("click", () => finishAppCall(false));
   $("btnAllStart").addEventListener("click", () => { for (let pc = 1; pc <= settings.pcCount; pc++) adminCommand(pc, "run"); });
   $("btnAllPause").addEventListener("click", () => { for (let pc = 1; pc <= Math.max(settings.pcCount, ...cloud.pcs.map((x) => x.pc)); pc++) adminCommand(pc, "pause"); });
 
   // ---------- sign in ----------
+  // A link ending in ?pc=2 makes this browser PC 2 (one link per PC).
+  try {
+    const urlPc = parseInt(new URLSearchParams(location.search).get("pc"), 10);
+    if (urlPc >= 1 && urlPc <= 50) localStorage.setItem("shd-pc", String(urlPc));
+  } catch { /* ignore */ }
   function showLogin(msg) {
     $("login").hidden = false;
     document.body.classList.add("signed-out");
