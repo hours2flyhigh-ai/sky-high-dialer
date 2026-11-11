@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sky High Dialer</title>
 <meta name="color-scheme" content="light dark">
-<link rel="stylesheet" href="dialer.css?v=1.7.0">
-<script src="theme.js?v=1.7.0"></script>
+<link rel="stylesheet" href="dialer.css?v=1.7.1">
+<script src="theme.js?v=1.7.1"></script>
 </head>
 <body class="signed-out">
 <svg class="sprite" width="0" height="0" aria-hidden="true" focusable="false">
@@ -124,6 +124,10 @@
       <div class="card-phone" id="cPhone"></div>
       <dl class="card-facts card-details" id="cFacts" hidden></dl>
       <textarea id="cBox" class="detail-box" spellcheck="false" aria-label="Customer details"></textarea>
+      <div class="cx-summary" id="cSummaryWrap" hidden>
+        <div class="cx-summary-h">CX Summary</div>
+        <div class="cx-summary-t" id="cSummary"></div>
+      </div>
       <div class="card-comments" id="cCommentsWrap" hidden>
         <div class="card-comments-h">Comments</div>
         <textarea id="cComments" class="edit comments"></textarea>
@@ -352,6 +356,9 @@
         <label for="hoursGuard">Only call 8am–9pm in the lead's time zone</label>
         <input id="hoursGuard" type="checkbox" checked>
 
+        <label for="showSummary">Show the CX Summary on the customer card (when the sheet has one)</label>
+        <input id="showSummary" type="checkbox" checked>
+
         <label for="callVia">Place calls with</label>
         <select id="callVia">
           <option value="app" selected>The Zoom app on each PC (each PC calls from its own Zoom)</option>
@@ -383,9 +390,9 @@
 </main>
 </div>
 
-<script src="states.js?v=1.7.0"></script>
-<script src="xlsx.js?v=1.7.0"></script>
-<script src="cloud.js?v=1.7.0"></script>
-<script src="dialer.js?v=1.7.0"></script>
+<script src="states.js?v=1.7.1"></script>
+<script src="xlsx.js?v=1.7.1"></script>
+<script src="cloud.js?v=1.7.1"></script>
+<script src="dialer.js?v=1.7.1"></script>
 </body>
 </html>

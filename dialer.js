@@ -187,7 +187,7 @@
   ];
   const normLabel = (t) => String(t || "").toLowerCase().replace(/[_\s]+/g, " ").replace(/\s*[:#-]\s*$/, "").trim();
   const fieldFor = (label) => { const n = normLabel(label); return DETAIL_FIELDS.find((f) => f.re.test(n)); };
-  const COMMENT_LABEL = /^(comments?|notes?|remarks?)$/;
+  const COMMENT_LABEL = /^(comments?|notes?|remarks?|(cx|customer|call) summary|summary)$/;   // a "CX Summary" column shows under the details box
   const STATE_LABEL = /^(state|mailing state|home state)$/;
   // Mailing address like "12 Main St, Dover, DE 19901" -> "DE" (so calling hours still work without a State column)
   function stateFromAddress(addr) {
@@ -997,6 +997,10 @@
     }
     shownLeadId = l.id;
     buildEditor(l);
+    // CX Summary (from a "CX Summary" / Comments column), shown only when the customer has one
+    const sum = settings.showSummary === false ? "" : String(l.comments || "").trim();
+    $("cSummaryWrap").hidden = !sum;
+    if ($("cSummary").textContent !== sum) $("cSummary").textContent = sum;
     const addRow = (box, k, v) => {
       const dt = document.createElement("dt"); dt.textContent = k;
       const dd = document.createElement("dd"); dd.textContent = v || "—";
@@ -1205,6 +1209,7 @@
     settings.retryMode = $("retryMode").value;
     settings.gapSec = clamp($("gapSec").value, 1, 600, 4);
     settings.hoursGuard = $("hoursGuard").checked;
+    settings.showSummary = $("showSummary").checked;
     settings.callVia = $("callVia").value === "panel" ? "panel" : "app";
     settings.pcCount = clamp($("pcCount").value, 1, 20, 1);
     settings.pcNumber = clamp($("pcNumber").value, 1, settings.pcCount, 1);
@@ -1216,7 +1221,7 @@
     $("whoPc").textContent = "PC " + settings.pcNumber;
     store.save(); render(); renderAdmin();
   }
-  for (const id of ["maxAttempts", "retryMode", "gapSec", "hoursGuard", "callVia", "pcCount", "pcNumber"]) $(id).addEventListener("change", readSettings);
+  for (const id of ["maxAttempts", "retryMode", "gapSec", "hoursGuard", "showSummary", "callVia", "pcCount", "pcNumber"]) $(id).addEventListener("change", readSettings);
 
   // ---------- theme: each PC picks its own colours (kept on that PC) ----------
   const THEMES = [
@@ -1313,6 +1318,7 @@
     $("retryMode").value = settings.retryMode;
     $("gapSec").value = String(settings.gapSec);
     $("hoursGuard").checked = settings.hoursGuard;
+    $("showSummary").checked = settings.showSummary !== false;
     $("callVia").value = settings.callVia === "panel" ? "panel" : "app";
     $("phoneHint").textContent = settings.callVia === "panel"
       ? "Sign in here once with your Zoom account. Calls are placed from this panel."
@@ -1340,7 +1346,7 @@
     const l = current ? leadById(current.leadId) : null;
     return { running, state: $("statusBox").dataset.state, text: $("statusText").textContent.slice(0, 120),
       lead: l ? (l.name || l.display) : "", called: mine.filter((x) => x.attempts > 0).length,
-      sales: mine.filter((x) => x.sale).length, left: candidates().length, v: "1.7.0", zoom: zoomLink + 1 };
+      sales: mine.filter((x) => x.sale).length, left: candidates().length, v: "1.7.1", zoom: zoomLink + 1 };
   }
   function setOnline(ok, err) {
     const el = $("syncState");

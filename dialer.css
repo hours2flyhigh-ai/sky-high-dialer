@@ -387,3 +387,9 @@ html[data-side="rail"] .side-user { justify-content: center; padding: 8px 0 2px;
   .view .admin-table td.admin-now { min-width: 100px; }
   .view .admin-table th, .view .admin-table td { padding-left: 6px; padding-right: 6px; }
 }
+
+/* CX Summary under the details box (v1.7.1): only shown when the customer has one */
+.cx-summary { margin-top: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 10px 12px; }
+.cx-summary[hidden] { display: none; }
+.cx-summary-h { font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+.cx-summary-t { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; line-height: 1.5; max-height: 260px; overflow-y: auto; }
