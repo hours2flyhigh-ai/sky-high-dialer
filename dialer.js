@@ -17,6 +17,7 @@
   const DIAL_TIMEOUT_MS = 40000; // no word from Zoom after dialing -> stop and ask the user
 
   const $ = (id) => document.getElementById(id);
+  const setN = (id, n) => { $(id).textContent = n ? String(n) : ""; }; // the small count next to a menu name
   const iframe = $("zoom-embeddable-phone-iframe");
 
   // ---------- state ----------
@@ -34,7 +35,7 @@
   let countdown = null;    // {leadId, endsAt, timer}
   let watchdog = null;
   let zoomSeen = false;
-  let focusMode = false;   // customer view: only the current customer + Zoom panel
+  let view = "card";       // the page of the menu that is showing (see setView)
   // online sync state (see "online sync" below)
   const cloud = { role: null, since: null, serverNow: null, snap: new Map(), dncSnap: new Set(), sheetsSnap: "[]",
     sheetIds: new Set(), configSnap: "", desire: null, lastDesiredAt: undefined, pcs: [], commands: [],
@@ -341,7 +342,7 @@
         (blocked ? ` ${blocked} won't be dialed (not US/Canada or could be billed extra).` : "") +
         (hasState ? "" : " No State column, so calling-hours check is off for these leads.");
       $("sheetName").value = ""; $("pasteBox").value = ""; $("sheetUrl").value = "";
-      setTimeout(() => { $("importPanel").hidden = true; }, 2500);
+      setTimeout(() => { if (view === "import") setView("sheets"); }, 2500);
     } catch (err) {
       msg.className = "msg bad";
       msg.textContent = err.message;
@@ -500,7 +501,7 @@
     cancelCountdown();
     const { lead, blocked } = pickNext();
     if (!lead) {
-      running = false; setFocus(false); syncButtons();
+      running = false; if (view === "card") setView("leads"); syncButtons();
       setStatus("idle", blocked
         ? `Stopped: ${blocked} leads left, but it's outside 8am–9pm in their time zones.`
         : "Done. Every lead on your sheets has been called.");
@@ -561,10 +562,21 @@
 
   // ---------- calling through the Zoom app on this PC ----------
   let zoomLaunchAt = 0;
+  // Zoom versions differ in how they take a number from a link: some open without calling.
+  // "Try another way" on the card moves to the next way, and each PC remembers the one that works there.
+  const ZOOM_LINKS = [
+    (n) => "zoomphonecall://" + n,           // zoomphonecall://+12155550100 (the usual way)
+    (n) => "zoomphonecall://" + n + "?",     // some Zoom versions only call with "?" on the end
+    (n) => "callto:" + n,
+    (n) => "tel:" + n,
+    (n) => "zoomphonecall://" + n.replace("+", "")
+  ];
+  let zoomLink = 0;
+  try { const z = parseInt(localStorage.getItem("shd-zoomlink"), 10); if (z >= 0 && z < ZOOM_LINKS.length) zoomLink = z; } catch { /* ignore */ }
   function openZoomApp(e164) {
     zoomLaunchAt = Date.now();
     const num = String(e164 || "").replace(/[^\d+]/g, "");
-    try { window.location.href = "zoomphonecall://" + num; } catch { /* ignore */ }
+    try { window.location.href = ZOOM_LINKS[zoomLink](num); } catch { /* ignore */ }
   }
   // The agent tells the dialer how the call went (used when the Zoom panel isn't reporting calls).
   function finishAppCall(answered) {
@@ -584,8 +596,8 @@
   const hangUpWhere = () => (settings.callVia === "panel" ? "the Zoom panel" : "the Zoom app");
 
   function start(fromCloud) {
-    if (!leads.length) { if (cloud.role === "admin") $("importPanel").hidden = false; setStatus("idle", cloud.role === "admin" ? "Add a sheet first." : "No customers yet. The admin adds the sheets."); return; }
-    running = true; setFocus(true); syncButtons();
+    if (!leads.length) { if (cloud.role === "admin") setView("import"); setStatus("idle", cloud.role === "admin" ? "Add a sheet first." : "No customers yet. The admin adds the sheets."); return; }
+    running = true; setView("card"); syncButtons();
     if (fromCloud !== true) cloudDesire("run");
     if (current) { setStatus("live", "On a call. Dialing resumes after it ends."); return; }
     if (inboundBusy) { setStatus("wait", "Incoming call. Dialer is holding."); return; }
@@ -635,11 +647,12 @@
     tbody.textContent = "";
     $("empty").hidden = leads.length > 0;
     renderSheets();
+    renderSales();
     renderCard();
     renderDnc();
     renderStates();
     const rb = $("btnRestart");
-    rb.textContent = armedRestart === "all" ? "Click again: clears all results" : "Start over";
+    rb.querySelector(".nav-label").textContent = armedRestart === "all" ? "Click again to clear all" : "Start over";
     rb.classList.toggle("armed", armedRestart === "all");
     rb.disabled = !leads.length || !!current;
     const counts = {};
@@ -703,6 +716,9 @@
       if (dncMine) chip(`${dncMine} on Do Not Call`);
       if (others) chip(`${others} on other PCs`);
     }
+    setN("nLeads", shown);
+    setN("nDnc", dnc.size);
+    $("nStates").textContent = settings.statesOnly ? `${settings.statesOnly.length} on` : "";
   }
 
   // ---------- Do Not Call list ----------
@@ -851,12 +867,18 @@
     $("blankStateCount").textContent = `${blank} left`;
   }
 
-  function setFocus(on) {
-    focusMode = on;
-    document.body.classList.toggle("focus-mode", on);
-    $("btnView").textContent = on ? "Show all options" : "Customer view";
-    $("btnView").title = on ? "Show sheets, settings and the full list" : "Show only the customer and the Zoom panel";
-    renderCard();
+  // ---------- menu: one page at a time ----------
+  // Agents only ever get the customer card; every other page is for admins.
+  const VIEWS = ["card", "leads", "sales", "sheets", "import", "dnc", "states", "pcs", "users", "settings"];
+  function setView(v) {
+    if (!VIEWS.includes(v) || (v !== "card" && cloud.role !== "admin")) v = "card";
+    view = v;
+    for (const s of document.querySelectorAll(".view")) s.hidden = s.dataset.view !== v;
+    for (const b of document.querySelectorAll(".nav[data-go]")) {
+      if (b.dataset.go === v) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
+    }
+    if (cloud.role === "admin") { try { localStorage.setItem("shd-view", v); } catch { /* ignore */ } }
+    if (v === "card") { renderCard(); requestAnimationFrame(() => { if (!$("card").hidden) grow($("cBox")); }); }
   }
 
   // Which customer the card shows: the one on the line, else the one about to be dialed, else the last one called.
@@ -1015,26 +1037,39 @@
     $("cSale").onclick = () => toggleSale(l);
   }
 
+  // Sheets page: one row per sheet, with totals across every PC.
   function renderSheets() {
-    const box = $("sheets");
-    box.textContent = "";
+    const body = $("sheetRows");
+    body.textContent = "";
     for (const sh of sheets) {
-      const mine = leads.filter((l) => l.sheet === sh.id && isMine(l));
-      const done = mine.filter((l) => l.status === "talked" || l.status === "noanswer").length;
-      const el = document.createElement("div");
-      el.className = "sheet" + (sh.active ? "" : " off");
+      const all = leads.filter((l) => l.sheet === sh.id);
+      const called = all.filter((l) => l.attempts > 0).length;
+      const sold = all.filter((l) => l.sale).length;
+      const left = all.filter((l) => (l.status === "pending" || l.status === "retry") && l.attempts < settings.maxAttempts && !isDnc(l) && !l.sale).length;
+      const tr = document.createElement("tr");
+      if (!sh.active) tr.className = "off";
+      const td = (text, cls) => { const c = document.createElement("td"); if (text != null) c.textContent = text; if (cls) c.className = cls; tr.appendChild(c); return c; };
       const lab = document.createElement("label");
+      lab.className = "sheet-on";
       lab.title = "Untick to stop dialing from this sheet without removing it";
       const cb = document.createElement("input");
       cb.type = "checkbox"; cb.checked = sh.active;
+      cb.setAttribute("aria-label", "Dial from " + sh.name);
       cb.addEventListener("change", () => {
         sh.active = cb.checked; store.save(); render();
         if (running && !current && !inboundBusy && !countdown) scheduleNext();
       });
-      lab.append(cb, document.createTextNode(sh.name));
-      const meta = document.createElement("span");
-      meta.className = "sheet-meta";
-      meta.textContent = `${done}/${mine.length} done`;
+      lab.append(cb, document.createTextNode(sh.active ? "On" : "Off"));
+      td(null).appendChild(lab);
+      td(sh.name, "sheet-name");
+      td(String(all.length)); td(String(called)); td(String(left)); td(String(sold));
+      const act = td(null, "row-actions");
+      const rs = document.createElement("button");
+      rs.type = "button"; rs.className = "btn tiny" + (armedRestart === sh.id ? " danger armed" : "");
+      rs.textContent = armedRestart === sh.id ? "Click again to restart" : "Restart";
+      rs.title = "Set this sheet's customers back to Not called and dial them again from the top";
+      rs.disabled = !!current;
+      rs.addEventListener("click", () => armRestart(sh.id));
       const rm = document.createElement("button");
       rm.type = "button"; rm.className = "btn tiny danger" + (armedRemove === sh.id ? " armed" : "");
       rm.textContent = armedRemove === sh.id ? "Click again to remove" : "Remove";
@@ -1044,15 +1079,13 @@
         armedRemove = sh.id; render();
         setTimeout(() => { if (armedRemove === sh.id) { armedRemove = null; render(); } }, 4000);
       });
-      const rs = document.createElement("button");
-      rs.type = "button"; rs.className = "btn tiny" + (armedRestart === sh.id ? " danger armed" : "");
-      rs.textContent = armedRestart === sh.id ? "Click again to restart" : "Restart";
-      rs.title = "Set this sheet's customers back to Not called and dial them again from the top";
-      rs.disabled = !!current;
-      rs.addEventListener("click", () => armRestart(sh.id));
-      el.append(lab, meta, rs, rm);
-      box.appendChild(el);
+      act.append(rs, rm);
+      body.appendChild(tr);
     }
+    const on = sheets.filter((s) => s.active).length;
+    $("sheetsEmpty").hidden = sheets.length > 0;
+    $("sheetsSum").textContent = sheets.length ? `${sheets.length} sheet${sheets.length === 1 ? "" : "s"} · ${on} on` : "none yet";
+    setN("nSheets", sheets.length);
   }
 
   function resultsRows() {
@@ -1062,21 +1095,83 @@
       l.status === "talked" ? "Answered" : isDnc(l) && l.status !== "talked" && l.attempts === 0 ? "Do not call" : (l.result || LABEL[l.status] || l.status), l.lastCall])];
   }
 
+  // ---------- sales page: every customer marked Sale made, newest first ----------
+  const saleTime = (l) => { const t = Date.parse(String(l.saleAt || "").replace(/\s*PT$/, "")); return Number.isNaN(t) ? 0 : t; };
+  const salesList = () => leads.filter((l) => l.sale && (cloud.role === "admin" || isMine(l))).sort((a, b) => saleTime(b) - saleTime(a));
+  function salesTable() {
+    return [["Name", "Phone", "State", "Sheet", "PC", "Sale time"],
+      ...salesList().map((l) => [l.name, l.display, l.state, (sheetOf(l) || {}).name || "", String(ownerOf(l)), l.saleAt || ""])];
+  }
+  function renderSales() {
+    const body = $("salesRows");
+    body.textContent = "";
+    const list = salesList();
+    const today = pacific(Date.now()).split(",")[0] + ","; // sale times are stamped in Pacific time
+    let todayN = 0;
+    list.forEach((l, i) => {
+      if (String(l.saleAt || "").startsWith(today)) todayN++;
+      const tr = document.createElement("tr");
+      const td = (cls, text) => { const c = document.createElement("td"); if (cls) c.className = cls; c.textContent = text; tr.appendChild(c); return c; };
+      td("num", i + 1);
+      td("name", l.name || "—");
+      td("tel", l.display);
+      td("", l.state || "—");
+      td("sheetname", (sheetOf(l) || {}).name || "—");
+      td("", "PC " + ownerOf(l));
+      td("", l.saleAt || "—");
+      const wrap = document.createElement("div"); wrap.className = "row-actions";
+      const b = document.createElement("button"); b.type = "button"; b.className = "btn tiny sale"; b.textContent = "Undo sale";
+      b.title = "Take the sale mark off this customer";
+      b.addEventListener("click", () => toggleSale(l));
+      wrap.appendChild(b); td("", "").appendChild(wrap);
+      body.appendChild(tr);
+    });
+    $("salesEmpty").hidden = list.length > 0;
+    const c = $("salesCounts"); c.textContent = "";
+    const chip = (t) => { const s = document.createElement("span"); s.className = "chip"; s.textContent = t; c.appendChild(s); };
+    if (list.length) { chip(`${list.length} sale${list.length === 1 ? "" : "s"}`); chip(`${todayN} today (Pacific time)`); }
+    $("btnSalesCopy").disabled = $("btnSalesCsv").disabled = !list.length;
+    setN("nSales", list.length);
+  }
+  function saveCsv(rows, name) {
+    const csv = rows.map((r) => r.map((v) => `"${String(v || "").replace(/"/g, '""')}"`).join(",")).join("\r\n");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    a.download = name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  }
+
   // ---------- wire up ----------
   $("btnStart").addEventListener("click", start);
   $("btnRestart").addEventListener("click", () => armRestart("all"));
-  $("btnView").addEventListener("click", () => setFocus(!focusMode));
   $("btnPause").addEventListener("click", pause);
   $("btnSkip").addEventListener("click", skip);
-  const PANELS = ["importPanel", "settingsPanel", "dncPanel", "statePanel"];
-  $("btnStates").addEventListener("click", () => togglePanel("statePanel"));
   $("btnStatesAll").addEventListener("click", () => { settings.blankState = true; setStates(null); });
   $("btnStatesNone").addEventListener("click", () => { settings.blankState = false; setStates([]); });
   $("blankState").addEventListener("change", () => { settings.blankState = $("blankState").checked; store.save(); render(); maybeResume(); });
-  const togglePanel = (id) => { const open = $(id).hidden; PANELS.forEach((p) => { $(p).hidden = true; }); $(id).hidden = !open; };
-  $("btnImport").addEventListener("click", () => togglePanel("importPanel"));
-  $("btnSettings").addEventListener("click", () => togglePanel("settingsPanel"));
-  $("btnDnc").addEventListener("click", () => togglePanel("dncPanel"));
+  // the menu: anything with data-go opens that page
+  document.addEventListener("click", (e) => { const b = e.target.closest("[data-go]"); if (b) setView(b.dataset.go); });
+  // small menu (icons only) or full menu; each PC keeps its own choice
+  const railNow = () => document.documentElement.dataset.side === "rail";
+  function setRail(on, keep) {
+    if (on) document.documentElement.dataset.side = "rail"; else delete document.documentElement.dataset.side;
+    $("btnSide").setAttribute("aria-expanded", on ? "false" : "true");
+    $("btnSide").title = on ? "Show the menu names" : "Make the menu smaller";
+    if (keep) { try { localStorage.setItem("shd-side", on ? "rail" : "full"); } catch { /* ignore */ } }
+  }
+  $("btnSide").addEventListener("click", () => setRail(!railNow(), true));
+  window.addEventListener("resize", () => {
+    let picked = null; try { picked = localStorage.getItem("shd-side"); } catch { /* ignore */ }
+    if (!picked) setRail(window.innerWidth < 1000, false);
+  });
+  setRail(railNow(), false);
+  $("btnSalesCopy").addEventListener("click", async () => {
+    const tsv = salesTable().map((r) => r.map((v) => String(v || "").replace(/\t|\n/g, " ")).join("\t")).join("\n");
+    if (await copyText(tsv)) setStatus($("statusBox").dataset.state, "Sales copied. Paste into Google Sheets.");
+    else setStatus("error", "Couldn't copy. Use Download sales CSV instead.");
+  });
+  $("btnSalesCsv").addEventListener("click", () => saveCsv(salesTable(), `dialer-sales-${new Date().toISOString().slice(0, 10)}.csv`));
   $("btnDncAdd").addEventListener("click", () => { if (addDnc(numbersIn($("dncBox").value))) $("dncBox").value = ""; });
   $("dncFile").addEventListener("change", () => addDncFile($("dncFile").files[0]));
   $("dncSearch").addEventListener("input", renderDnc);
@@ -1148,6 +1243,7 @@
     const now = themeNow();
     for (const b of $("themeMenu").children) b.setAttribute("aria-checked", b.dataset.pick === now ? "true" : "false");
     $("btnTheme").title = "Theme: " + THEMES.find((x) => x.id === now).name + ". Click to change the colours on this PC.";
+    $("themeNow").textContent = THEMES.find((x) => x.id === now).name;
   }
   function themeMenuOpen(open) {
     $("themeMenu").hidden = !open;
@@ -1244,7 +1340,7 @@
     const l = current ? leadById(current.leadId) : null;
     return { running, state: $("statusBox").dataset.state, text: $("statusText").textContent.slice(0, 120),
       lead: l ? (l.name || l.display) : "", called: mine.filter((x) => x.attempts > 0).length,
-      sales: mine.filter((x) => x.sale).length, left: candidates().length, v: "1.6.0" };
+      sales: mine.filter((x) => x.sale).length, left: candidates().length, v: "1.7.0", zoom: zoomLink + 1 };
   }
   function setOnline(ok, err) {
     const el = $("syncState");
@@ -1423,7 +1519,7 @@
     setOnline(true);
     fillSettingsForm(); render(); renderAdmin(); syncButtons();
     if (settings.pcNumber > settings.pcCount) setStatus("error", `This PC is number ${settings.pcNumber}, but the admin set ${settings.pcCount} PC${settings.pcCount === 1 ? "" : "s"}. Sign out and pick a number from 1 to ${settings.pcCount}.`);
-    else setStatus("idle", cloud.role === "admin" ? (leads.length ? "Ready. Press Start dialing, or start PCs from the admin panel." : "Press Add sheet to load customers for all PCs.") : (leads.length ? "Ready. Press Start dialing." : "Waiting for the admin to add customers."));
+    else setStatus("idle", cloud.role === "admin" ? (leads.length ? "Ready. Press Start dialing, or start other PCs from All PCs." : "Press Add sheet to load customers for all PCs.") : (leads.length ? "Ready. Press Start dialing." : "Waiting for the admin to add customers."));
     cloudCycle(true);
   }
 
@@ -1436,6 +1532,7 @@
   }
 
   // ---------- roles ----------
+  let roleShown = null; // the role the menu was last set up for
   function applyRole() {
     const admin = cloud.role === "admin";
     document.body.classList.toggle("role-admin", admin);
@@ -1443,7 +1540,14 @@
     $("whoRole").textContent = admin ? "Admin" : "Agent";
     $("whoPc").textContent = "PC " + settings.pcNumber;
     $("pcNumber").disabled = !admin;
-    if (!admin) setFocus(true);
+    // remembered on this PC so the right menu shows straight away next time (the database still decides what each login may do)
+    try { localStorage.setItem("shd-role:" + myEmail(), cloud.role); } catch { /* ignore */ }
+    if (!admin) setView("card");
+    else if (roleShown !== "admin") {
+      let v = "leads"; try { v = localStorage.getItem("shd-view") || v; } catch { /* ignore */ }
+      setView(v); // an admin comes back to the page they were on
+    }
+    roleShown = cloud.role;
     if (admin && !users.loaded && !users.loading) loadUsers();
   }
 
@@ -1518,8 +1622,23 @@
     const sales = leads.filter((l) => l.sale).length;
     const called = leads.filter((l) => l.attempts > 0).length;
     $("adminSum").textContent = `${online} online · ${dialing} dialing · ${called} called · ${sales} sale${sales === 1 ? "" : "s"}`;
+    $("nPcs").textContent = `${online} online`;
   }
   $("cZoomOpen").addEventListener("click", () => { const l = current && leadById(current.leadId); if (l) openZoomApp(l.phone); });
+  $("cZoomTry").addEventListener("click", () => {
+    const l = current && leadById(current.leadId);
+    if (!l) return;
+    zoomLink = (zoomLink + 1) % ZOOM_LINKS.length;
+    try { localStorage.setItem("shd-zoomlink", String(zoomLink)); } catch { /* ignore */ }
+    setStatus("dialing", `Trying another way to open Zoom (${zoomLink + 1} of ${ZOOM_LINKS.length}). If Zoom calls ${l.name || l.display} now, this PC keeps using this way. If not, press it again.`);
+    openZoomApp(l.phone);
+  });
+  $("cCopyNum").addEventListener("click", async () => {
+    const l = current && leadById(current.leadId);
+    if (!l) return;
+    const ok = await copyText(last10(l.phone));
+    setStatus("dialing", ok ? "Number copied. Click the keypad in Zoom, press Ctrl+V, then Enter." : "Couldn't copy. Type this number into Zoom: " + l.display);
+  });
   $("cAnswered").addEventListener("click", () => finishAppCall(true));
   $("cNoAnswer").addEventListener("click", () => finishAppCall(false));
   $("btnAllStart").addEventListener("click", () => { for (let pc = 1; pc <= settings.pcCount; pc++) adminCommand(pc, "run"); });
@@ -1633,6 +1752,7 @@
     const me = myEmail();
     const n = users.rows.length, can = users.rows.filter((u) => u.login).length;
     $("usersSum").textContent = users.loaded ? `${n} user${n === 1 ? "" : "s"} · ${can} can sign in` : "Loading…";
+    setN("nUsers", users.loaded ? n : 0);
     for (const u of users.rows) {
       const isMe = u.email === me;
       const name = shortLogin(u.email);
@@ -1767,8 +1887,18 @@
     let pc = settings.pcNumber;
     try { pc = clamp(localStorage.getItem("shd-pc") || pc, 1, 50, 1); } catch { /* ignore */ }
     settings.pcNumber = pc;
-    $("whoEmail").textContent = shortLogin((Cloud.session && Cloud.session.email) || "");
+    const who = shortLogin((Cloud.session && Cloud.session.email) || "");
+    $("whoEmail").textContent = who;
+    $("whoEmail").title = who;
+    $("whoInitial").textContent = who.slice(0, 1);
+    $("sideUser").title = who;
     users.rows = []; users.loaded = false; users.pwFor = null; users.armed = null; // a different person may have signed in
+    // start from the customer card, then show the menu this login had last time while the database answers
+    cloud.role = null; roleShown = null;
+    document.body.classList.remove("role-admin", "role-agent");
+    setView("card");
+    let known = null; try { known = localStorage.getItem("shd-role:" + myEmail()); } catch { /* ignore */ }
+    if (known === "admin" || known === "agent") { cloud.role = known; applyRole(); }
     fillSettingsForm();
     await cloudStart();
   }

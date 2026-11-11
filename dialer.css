@@ -1,4 +1,4 @@
-/* Layout: one-screen tool. Control bar on top, lead table left, Zoom phone fixed-width right. */
+/* Layout: one-screen tool. Menu on the left, control bar on top, the chosen page in the middle, Zoom phone fixed-width right. */
 /* Themes: each one is a set of colours on [data-theme]. The page uses the one on <html>; the swatches in the
    Theme menu carry their own data-theme, so they always show that theme's colours. */
 :root, [data-theme="light"] {
@@ -73,7 +73,7 @@
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 html, body { height: 100%; }
-body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.45 var(--font); display: flex; flex-direction: column; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.45 var(--font); display: flex; }
 
 .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 12px 20px; background: var(--surface); border-bottom: 1px solid var(--line); }
 .brand { display: flex; align-items: center; gap: 10px; }
@@ -94,7 +94,7 @@ body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.45 var(-
 @keyframes pulse { 50% { opacity: .3; } }
 @media (prefers-reduced-motion: reduce) { .status .dot { animation: none !important; } }
 
-.controls, .toolbar-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.controls { display: flex; gap: 8px; flex-wrap: wrap; }
 .btn { font: inherit; font-weight: 600; padding: 9px 16px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); cursor: pointer; }
 .btn:hover { border-color: var(--accent); }
 .btn:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -107,8 +107,13 @@ body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.45 var(-
 .layout { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 16px; padding: 16px 20px; }
 @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
 
-.leads { min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 12px; }
-.toolbar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; }
+/* Pages: the menu shows one .view at a time. Panels keep their full height; a table takes what is left and scrolls. */
+.views { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.view { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 12px; overflow: auto; }
+.view > .panel, .view > .card, .view > .view-head { flex: none; }
+.view-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-height: 32px; }
+.view-head h2 { margin: 0; font-size: 16px; }
+.view-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; }
 .counts { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip { font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); color: var(--muted); font-variant-numeric: tabular-nums; }
 
@@ -153,22 +158,18 @@ tr.current td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
 .phone iframe { flex: 1; width: 100%; min-height: 580px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
 .phone-hint { text-align: center; }
 
-/* Sheets list */
-.sheets { display: flex; flex-wrap: wrap; gap: 8px; }
-.sheet { display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 12px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); font-size: 13px; }
-.sheet.off { opacity: .55; }
-.sheet label { display: flex; align-items: center; gap: 6px; font-weight: 600; cursor: pointer; }
-.sheet .sheet-meta { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+/* Sheets page */
+.sheets-table td { vertical-align: middle; font-variant-numeric: tabular-nums; }
+.sheets-table tr.off td { color: var(--muted); }
+.sheets-table td.sheet-name { font-weight: 600; white-space: normal; min-width: 140px; }
+.sheet-on { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; cursor: pointer; }
 .btn.danger { color: var(--bad); }
 .btn.danger.armed { background: var(--bad); color: var(--accent-fg); border-color: var(--bad); }
 td.sheetname { color: var(--muted); font-size: 12px; max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
 input[type="number"] { width: 90px; }
 .settings-grid h3 { grid-column: 1 / -1; margin: 6px 0 0; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); justify-self: start; }
 
-/* Customer view (focus mode): only the current customer + the Zoom panel */
-.focus { display: none; min-width: 0; min-height: 0; }
-body.focus-mode .leads { display: none; }
-body.focus-mode .focus { display: block; }
+/* Customer card page */
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 24px 28px; display: flex; flex-direction: column; gap: 14px; }
 .card-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .card-left { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
@@ -208,10 +209,6 @@ input[type="file"]::file-selector-button { font: inherit; font-weight: 600; padd
 .state-meta.lt-off { color: var(--warn); font-weight: 600; }
 .state-opt .state-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .state-opt.nolead .state-name, .state-opt.nolead b { color: var(--muted); font-weight: 400; }
-
-/* Panels keep their full height; the lead table takes what is left and scrolls. */
-.leads > .panel, .leads > .sheets, .leads > .toolbar { flex: none; }
-.leads { overflow: auto; }
 
 /* Full customer details (v1.2) */
 .card-details { grid-template-columns: max-content 1fr; gap: 6px 20px; font-size: 15px; }
@@ -253,14 +250,10 @@ input[type="file"]::file-selector-button { font: inherit; font-weight: 600; padd
 .login-card h1 { font-size: 22px; margin: 12px 0 4px; }
 .login-card label { font-weight: 600; font-size: 13px; margin-top: 6px; }
 .login-card .btn { margin-top: 12px; padding: 10px; }
-body.signed-out .bar, body.signed-out .layout { visibility: hidden; }
+body.signed-out .side, body.signed-out .bar, body.signed-out .layout { visibility: hidden; }
 .sync[data-ok="0"] { color: var(--bad); font-weight: 600; }
-.who { color: var(--muted); font-weight: 400; margin-right: 4px; }
-@media (max-width: 1100px) { .who { display: none; } }
-/* agents: customer card, Start/Pause, Skip, Sale made, Do not call only */
-body.role-agent #btnView, body.role-agent .toolbar, body.role-agent .sheets, body.role-agent #importPanel,
-body.role-agent #statePanel, body.role-agent #dncPanel, body.role-agent #settingsPanel, body.role-agent .admin-panel { display: none !important; }
-body:not(.role-admin) .admin-panel { display: none; }
+/* agents: customer card, Start/Pause, Skip, Sale made, Do not call only. Everything marked data-admin is for admins. */
+body:not(.role-admin) [data-admin] { display: none !important; }
 .admin-panel { display: flex; flex-direction: column; gap: 10px; }
 .admin-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
 .admin-head h2 { margin: 0; }
@@ -292,8 +285,7 @@ body:not(.role-admin) .admin-panel { display: none; }
 
 /* Theme menu (v1.6) */
 .theme-pick { position: relative; }
-.theme-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); margin-right: 7px; }
-.theme-menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 60; width: max-content; min-width: 230px; max-width: calc(100vw - 24px); padding: 6px; display: flex; flex-direction: column; gap: 2px;
+.theme-menu { position: absolute; left: 0; bottom: calc(100% + 6px); z-index: 60; width: max-content; min-width: 230px; max-width: calc(100vw - 24px); max-height: calc(100vh - 150px); overflow-y: auto; padding: 6px; display: flex; flex-direction: column; gap: 2px;
   background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 14px 34px rgba(0, 0, 0, .22); }
 .theme-opt { display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 10px; border: 0; border-radius: 8px; background: transparent; color: var(--fg); font: inherit; text-align: left; cursor: pointer; }
 .theme-opt:hover { background: var(--bg); }
@@ -312,8 +304,8 @@ body:not(.role-admin) .admin-panel { display: none; }
 .theme-sw.auto > span { flex: 1; position: relative; background: var(--bg); }
 .theme-sw.auto > span::after { content: ""; position: absolute; left: 50%; top: 50%; width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 50%; background: var(--accent); }
 
-/* Users (v1.6): add, change password / role, remove. Admin only (it lives inside .admin-panel). */
-.users { display: flex; flex-direction: column; gap: 10px; margin-top: 6px; padding-top: 16px; border-top: 1px solid var(--line); }
+/* Users (v1.6): add, change password / role, remove. Admin only (its page is marked data-admin). */
+.users { display: flex; flex-direction: column; gap: 10px; }
 .user-add { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 12px; padding: 12px; border: 1px dashed var(--line); border-radius: 10px; background: var(--bg); }
 .user-field { display: flex; flex-direction: column; gap: 4px; flex: 1 1 190px; min-width: 0; }
 .user-field.narrow { flex: 0 0 auto; }
@@ -333,3 +325,65 @@ body:not(.role-admin) .admin-panel { display: none; }
 /* buttons at the end of a row: a normal table cell, so the row line stays straight */
 .admin-table td.row-actions { display: table-cell; text-align: right; }
 .admin-table td.row-actions .btn { margin-left: 6px; }
+
+/* Menu on the left (v1.7): every option in one list, one page at a time. The small version shows icons only. */
+.sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
+.main { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.side { flex: none; width: 240px; min-height: 0; display: flex; flex-direction: column; background: var(--surface); border-right: 1px solid var(--line); }
+.side-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 14px 8px 8px 12px; }
+.side-top .brand { min-width: 0; gap: 8px; }
+.side-top .brand > div { min-width: 0; }
+.side-top .brand-name, .side-top .brand-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ico { flex: none; width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.side-toggle { flex: none; width: 28px; height: 28px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--muted); cursor: pointer; }
+.side-toggle:hover { background: var(--bg); color: var(--fg); }
+.side-nav { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; padding: 0 8px 10px; }
+.side-h { margin: 14px 0 4px; padding: 0 10px; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.side-h:first-child { margin-top: 6px; }
+.nav { display: flex; align-items: center; gap: 10px; flex: none; width: 100%; min-height: 34px; padding: 6px 10px; border: 0; border-radius: 8px; background: transparent; color: var(--fg); font: inherit; text-align: left; cursor: pointer; }
+.nav .ico { color: var(--muted); }
+.nav:hover { background: var(--bg); }
+.nav:focus-visible, .side-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.nav[aria-current="page"] { background: var(--row-hl); font-weight: 600; }
+.nav[aria-current="page"] .ico { color: var(--accent); }
+.nav:disabled { opacity: .45; cursor: not-allowed; }
+.nav:disabled:hover { background: transparent; }
+.nav.danger, .nav.danger .ico { color: var(--bad); }
+.nav.armed, .nav.armed:hover { background: var(--bad); color: var(--accent-fg); font-weight: 600; }
+.nav.armed .ico { color: inherit; }
+.nav-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nav-n { flex: none; font-size: 12px; font-weight: 400; color: var(--muted); font-variant-numeric: tabular-nums; }
+.nav.armed .nav-n { color: inherit; }
+.side-foot { flex: none; display: flex; flex-direction: column; gap: 2px; padding: 8px; border-top: 1px solid var(--line); }
+.side-user { display: flex; align-items: center; gap: 10px; min-width: 0; margin-top: 4px; padding: 8px 10px 2px; border-top: 1px solid var(--line); }
+.avatar { flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: var(--accent-fg); font-weight: 700; font-size: 13px; text-transform: uppercase; }
+.side-user-text { min-width: 0; line-height: 1.3; }
+.side-user-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.side-user-sub { color: var(--muted); font-size: 12px; }
+.bar-meta { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.bar-meta #whoPc:not(:empty)::after { content: "\00b7"; margin-left: 6px; }
+/* small menu: icons only (the names show when the mouse rests on an icon) */
+html[data-side="rail"] .side { width: 56px; }
+html[data-side="rail"] .side .brand, html[data-side="rail"] .nav-label, html[data-side="rail"] .nav-n, html[data-side="rail"] .side-user-text { display: none; }
+html[data-side="rail"] .side-top { justify-content: center; padding: 14px 0 8px; }
+html[data-side="rail"] .nav { justify-content: center; padding: 6px 0; }
+html[data-side="rail"] .side-h { height: 1px; margin: 8px 6px; padding: 0; background: var(--line); font-size: 0; }
+html[data-side="rail"] .side-h:first-child { display: none; }
+html[data-side="rail"] .side-user { justify-content: center; padding: 8px 0 2px; }
+.side-top .mark { flex: none; width: 24px; height: 24px; border-radius: 7px; }
+/* When the page area is narrow (full menu on a laptop), tables tighten up so the row buttons stay on screen. */
+.views { container-type: inline-size; container-name: views; }
+@container views (max-width: 900px) {
+  .view td, .view th { padding-left: 8px; padding-right: 8px; }
+  .view .btn.tiny { padding: 3px 7px; }
+  .view .row-actions { gap: 4px; }
+  .view .admin-table td.row-actions .btn { margin-left: 4px; }
+  .users-table th { white-space: normal; }
+}
+@container views (max-width: 760px) {
+  [data-view="leads"] th:nth-child(1), [data-view="leads"] td.num, [data-view="leads"] th:nth-child(4), [data-view="leads"] td.sheetname { display: none; }
+  [data-view="sales"] th:nth-child(1), [data-view="sales"] td.num { display: none; }
+  .view .admin-table td:first-child, .users-table td:nth-child(4) { white-space: normal; overflow-wrap: anywhere; }
+  .view .admin-table td.admin-now { min-width: 100px; }
+  .view .admin-table th, .view .admin-table td { padding-left: 6px; padding-right: 6px; }
+}

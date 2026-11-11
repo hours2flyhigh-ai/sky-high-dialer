@@ -5,10 +5,30 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sky High Dialer</title>
 <meta name="color-scheme" content="light dark">
-<link rel="stylesheet" href="dialer.css?v=1.6.0">
-<script src="theme.js?v=1.6.0"></script>
+<link rel="stylesheet" href="dialer.css?v=1.7.0">
+<script src="theme.js?v=1.7.0"></script>
 </head>
 <body class="signed-out">
+<svg class="sprite" width="0" height="0" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="i-menu" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/></symbol>
+    <symbol id="i-card" viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="15" rx="3"/><circle cx="9" cy="10.5" r="2"/><path d="M5.8 16.2c.5-1.6 1.7-2.5 3.2-2.5s2.7.9 3.2 2.5M15 10h3.2M15 13.5h3.2"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6.5h11M9 12h11M9 17.5h11"/><path d="M4.5 6.5h.01M4.5 12h.01M4.5 17.5h.01" stroke-width="2.6"/></symbol>
+    <symbol id="i-sale" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M14.6 9.6c-.4-.9-1.4-1.4-2.6-1.4-1.5 0-2.6.7-2.6 1.9 0 2.6 5.4 1.2 5.4 3.9 0 1.2-1.2 2-2.8 2-1.3 0-2.4-.6-2.8-1.6M12 6.6v1.6M12 16v1.5"/></symbol>
+    <symbol id="i-sheets" viewBox="0 0 24 24"><rect x="3.5" y="4" width="17" height="16" rx="2.5"/><path d="M3.5 9.5h17M3.5 14.5h17M9.5 9.5V20"/></symbol>
+    <symbol id="i-add" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 8.5v7M8.5 12h7"/></symbol>
+    <symbol id="i-dnc" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M6 6l12 12"/></symbol>
+    <symbol id="i-states" viewBox="0 0 24 24"><path d="M12 20.5s-6-5-6-9.7a6 6 0 0112 0c0 4.7-6 9.7-6 9.7z"/><circle cx="12" cy="10.7" r="2.2"/></symbol>
+    <symbol id="i-pcs" viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="12" rx="2"/><path d="M8.5 20h7M12 16.5V20"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8.5" r="3"/><path d="M3.2 19c.5-3 2.8-4.8 5.8-4.8s5.3 1.8 5.8 4.8M15.5 5.8a3 3 0 010 5.4M17.3 14.6c1.8.7 3 2.2 3.4 4.4"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><path d="M4 7.5h9M17.5 7.5H20M4 16.5h2.5M11 16.5h9"/><circle cx="15.2" cy="7.5" r="2.2"/><circle cx="8.8" cy="16.5" r="2.2"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8.5" y="8.5" width="11.5" height="11.5" rx="2"/><path d="M15.5 8.5V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7.5a2 2 0 002 2h2.5"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v10.5M7.5 10.5L12 15l4.5-4.5M5 19.5h14"/></symbol>
+    <symbol id="i-restart" viewBox="0 0 24 24"><path d="M19.5 4.5V9H15"/><path d="M19.2 9A7.5 7.5 0 1018.7 15"/></symbol>
+    <symbol id="i-theme" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5a8.5 8.5 0 010 17z" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-signout" viewBox="0 0 24 24"><path d="M10 4.5H7A2.5 2.5 0 004.5 7v10A2.5 2.5 0 007 19.5h3"/><path d="M15 15.5l3.5-3.5L15 8.5M18.5 12h-9"/></symbol>
+  </defs>
+</svg>
 <div class="login" id="login" hidden>
   <form class="login-card" id="loginForm" autocomplete="on">
     <div class="brand"><span class="mark" aria-hidden="true"></span><div class="brand-name">Sky High Dialer</div></div>
@@ -24,15 +44,59 @@
     <p class="msg" id="loginMsg" role="status"></p>
   </form>
 </div>
-<header class="bar">
-  <div class="brand">
-    <span class="mark" aria-hidden="true"></span>
-    <div>
-      <div class="brand-name">Sky High Dialer</div>
-      <div class="brand-sub">Caller ID (209) 222-9022 · <span id="whoRole"></span> · <span id="whoPc"></span> · <span id="syncState" class="sync">…</span></div>
+<nav class="side" id="side" aria-label="Menu">
+  <div class="side-top">
+    <div class="brand">
+      <span class="mark" aria-hidden="true"></span>
+      <div>
+        <div class="brand-name">Sky High Dialer</div>
+        <div class="brand-sub">Caller ID (209) 222-9022</div>
+      </div>
     </div>
+    <button id="btnSide" class="side-toggle" type="button" aria-controls="side" aria-expanded="true" title="Make the menu smaller"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-menu"/></svg></button>
   </div>
 
+  <div class="side-nav" id="sideNav">
+    <div class="side-h">Dialing</div>
+    <button class="nav" type="button" data-go="card" title="Customer card"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-card"/></svg><span class="nav-label">Customer card</span></button>
+    <button class="nav" type="button" data-go="leads" data-admin title="Lead list"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-list"/></svg><span class="nav-label">Lead list</span><span class="nav-n" id="nLeads"></span></button>
+    <button class="nav" type="button" data-go="sales" data-admin title="Sales"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-sale"/></svg><span class="nav-label">Sales</span><span class="nav-n" id="nSales"></span></button>
+
+    <div class="side-h" data-admin>Lists</div>
+    <button class="nav" type="button" data-go="sheets" data-admin title="Sheets"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-sheets"/></svg><span class="nav-label">Sheets</span><span class="nav-n" id="nSheets"></span></button>
+    <button class="nav" type="button" data-go="import" data-admin title="Add sheet"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-add"/></svg><span class="nav-label">Add sheet</span></button>
+    <button class="nav" type="button" data-go="dnc" data-admin title="Do Not Call"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-dnc"/></svg><span class="nav-label">Do Not Call</span><span class="nav-n" id="nDnc"></span></button>
+    <button class="nav" type="button" data-go="states" data-admin title="States"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-states"/></svg><span class="nav-label">States</span><span class="nav-n" id="nStates"></span></button>
+
+    <div class="side-h" data-admin>Team</div>
+    <button class="nav" type="button" data-go="pcs" data-admin title="All PCs"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-pcs"/></svg><span class="nav-label">All PCs</span><span class="nav-n" id="nPcs"></span></button>
+    <button class="nav" type="button" data-go="users" data-admin title="User management"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-users"/></svg><span class="nav-label">User management</span><span class="nav-n" id="nUsers"></span></button>
+
+    <div class="side-h" data-admin>Results</div>
+    <button id="btnCopy" class="nav" type="button" data-admin title="Copy every result, ready to paste into Google Sheets"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-copy"/></svg><span class="nav-label">Copy results</span></button>
+    <button id="btnCsv" class="nav" type="button" data-admin title="Download every result as a CSV file"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-download"/></svg><span class="nav-label">Download CSV</span></button>
+    <button id="btnRestart" class="nav danger" type="button" data-admin title="Set every customer back to Not called and dial the list again from the top. Download your results first if you need them."><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-restart"/></svg><span class="nav-label">Start over</span></button>
+  </div>
+
+  <div class="side-foot">
+    <button class="nav" type="button" data-go="settings" data-admin title="Settings"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-settings"/></svg><span class="nav-label">Settings</span></button>
+    <div class="theme-pick" id="themePick">
+      <button id="btnTheme" class="nav" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="themeMenu" title="Change the colours on this PC"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-theme"/></svg><span class="nav-label">Theme</span><span class="nav-n" id="themeNow"></span></button>
+      <div class="theme-menu" id="themeMenu" role="menu" aria-label="Theme" hidden></div>
+    </div>
+    <button id="btnSignOut" class="nav" type="button" title="Sign out of the dialer on this PC"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-signout"/></svg><span class="nav-label">Sign out</span></button>
+    <div class="side-user" id="sideUser">
+      <span class="avatar" id="whoInitial" aria-hidden="true"></span>
+      <div class="side-user-text">
+        <div class="side-user-name" id="whoEmail"></div>
+        <div class="side-user-sub" id="whoRole"></div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<div class="main">
+<header class="bar">
   <div class="status" id="statusBox" data-state="idle">
     <span class="dot" aria-hidden="true"></span>
     <span id="statusText">Press Add sheet, then Start dialing.</span>
@@ -42,80 +106,116 @@
     <button id="btnStart" class="btn primary" type="button">Start dialing</button>
     <button id="btnPause" class="btn" type="button" hidden>Pause</button>
     <button id="btnSkip" class="btn ghost" type="button" title="Stop waiting on the current lead and move on">Skip lead</button>
-    <button id="btnView" class="btn ghost" type="button">Customer view</button>
-    <div class="theme-pick" id="themePick">
-      <button id="btnTheme" class="btn ghost" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="themeMenu" title="Change the colours on this PC"><span class="theme-dot" aria-hidden="true"></span>Theme</button>
-      <div class="theme-menu" id="themeMenu" role="menu" aria-label="Theme" hidden></div>
-    </div>
-    <button id="btnSignOut" class="btn ghost" type="button" title="Sign out of the dialer on this PC"><span id="whoEmail" class="who"></span> Sign out</button>
   </div>
+
+  <div class="bar-meta"><span id="whoPc"></span><span id="syncState" class="sync">…</span></div>
 </header>
 
 <main class="layout">
-  <section class="leads" aria-label="Lead list">
-    <div class="toolbar">
-      <div class="counts" id="counts"></div>
-      <div class="toolbar-actions">
-        <button id="btnImport" class="btn small" type="button">Add sheet</button>
-        <button id="btnStates" class="btn small ghost" type="button">States</button>
-        <button id="btnDnc" class="btn small ghost" type="button">Do Not Call</button>
-        <button id="btnSettings" class="btn small ghost" type="button">Settings</button>
-        <button id="btnRestart" class="btn small ghost danger" type="button" title="Set every customer back to Not called and dial the list again from the top. Download your results first if you need them.">Start over</button>
-        <button id="btnCopy" class="btn small ghost" type="button">Copy results</button>
-        <button id="btnCsv" class="btn small ghost" type="button">Download CSV</button>
+  <div class="views" id="views">
+  <section class="view" data-view="card" aria-label="Current customer">
+    <div class="card" id="card" hidden>
+      <div class="card-top">
+        <span class="pill" id="cStatus"></span>
+        <span class="cx-time" id="cTime"></span>
+        <span class="card-left" id="cLeft"></span>
+      </div>
+      <div class="card-name" id="cName"></div>
+      <div class="card-phone" id="cPhone"></div>
+      <dl class="card-facts card-details" id="cFacts" hidden></dl>
+      <textarea id="cBox" class="detail-box" spellcheck="false" aria-label="Customer details"></textarea>
+      <div class="card-comments" id="cCommentsWrap" hidden>
+        <div class="card-comments-h">Comments</div>
+        <textarea id="cComments" class="edit comments"></textarea>
+      </div>
+      <dl class="card-facts card-meta" id="cMeta"></dl>
+      <div class="card-check" id="cCheckWrap" hidden>
+        <div class="card-check-h">Check with the customer</div>
+        <div id="cCheck"></div>
+      </div>
+      <div class="card-call" id="cCallBtns" hidden>
+        <span class="card-call-h">Call open in the Zoom app. When it ends:</span>
+        <button id="cAnswered" class="btn small primary" type="button" title="The customer picked up. Go to the next customer.">Answered</button>
+        <button id="cNoAnswer" class="btn small" type="button" title="No answer or voicemail. Counts as a try; the number is redialed if tries are left.">No answer</button>
+        <button id="cZoomOpen" class="btn small ghost" type="button" title="Open this call in the Zoom app again (use this if Zoom didn't open)">Open in Zoom again</button>
+        <button id="cZoomTry" class="btn small ghost" type="button" title="Use this if Zoom opened but did not start the call. The dialer hands the number to Zoom another way and remembers the way that works on this PC.">Zoom didn't call? Try another way</button>
+        <button id="cCopyNum" class="btn small ghost" type="button" title="Copy this customer's number. Then click the keypad in Zoom, press Ctrl+V and Enter.">Copy number</button>
+      </div>
+      <div class="card-actions">
+        <div class="card-next" id="cNext"></div>
+        <div class="card-btns">
+          <button id="cSale" class="btn small sale" type="button" title="Mark this customer as a sale. Sales are never auto-dialed again.">Sale made</button>
+          <button id="cDnc" class="btn small danger" type="button" title="Add this number to the Do Not Call list">Do not call again</button>
+        </div>
       </div>
     </div>
+    <div class="card card-empty" id="cardEmpty">
+      <p><b>Waiting for the first call.</b></p>
+      <p>The customer's details show here while you're dialing.</p>
+    </div>
+  </section>
 
-    <div class="panel admin-panel" id="adminPanel">
+  <section class="view" data-view="leads" data-admin aria-label="Lead list" hidden>
+    <div class="view-head">
+      <h2>Lead list</h2>
+      <div class="counts" id="counts"></div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>#</th><th>Name</th><th>Phone</th><th>Sheet</th><th>Local time</th><th>Tries</th><th>Result</th><th></th></tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <div class="empty" id="empty">
+        <p><b>No leads yet.</b></p>
+        <p>Open <b>Add sheet</b> in the menu and paste your Google Sheet link or rows. You can add more sheets later.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="view" data-view="sales" data-admin aria-label="Sales" hidden>
+    <div class="view-head">
+      <h2>Sales</h2>
+      <div class="counts" id="salesCounts"></div>
+      <div class="view-actions">
+        <button id="btnSalesCopy" class="btn small ghost" type="button">Copy sales</button>
+        <button id="btnSalesCsv" class="btn small ghost" type="button">Download sales CSV</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>#</th><th>Name</th><th>Phone</th><th>State</th><th>Sheet</th><th>PC</th><th>Sale time</th><th></th></tr>
+        </thead>
+        <tbody id="salesRows"></tbody>
+      </table>
+      <div class="empty" id="salesEmpty">
+        <p><b>No sales yet.</b></p>
+        <p>Customers marked <b>Sale made</b> show here, newest first.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="view" data-view="sheets" data-admin aria-label="Sheets" hidden>
+    <div class="panel">
       <div class="admin-head">
-        <h2>All PCs <span class="chip" id="adminSum"></span></h2>
-        <div class="admin-btns">
-          <button id="btnAllStart" class="btn small primary" type="button">Start all</button>
-          <button id="btnAllPause" class="btn small" type="button">Pause all</button>
-        </div>
+        <h2>Sheets <span class="chip" id="sheetsSum"></span></h2>
+        <div class="admin-btns"><button class="btn small primary" type="button" data-go="import">Add sheet</button></div>
       </div>
       <div class="admin-wrap">
-        <table class="admin-table">
-          <thead><tr><th>PC</th><th>Online</th><th>Dialer</th><th>Now</th><th>Called</th><th>Sales</th><th>Left</th><th></th></tr></thead>
-          <tbody id="adminRows"></tbody>
+        <table class="admin-table sheets-table">
+          <thead><tr><th>Dial</th><th>Sheet</th><th>Customers</th><th>Called</th><th>Left to call</th><th>Sales</th><th></th></tr></thead>
+          <tbody id="sheetRows"></tbody>
         </table>
       </div>
-      <p class="hint">Send each PC its own link (<b>Copy link</b>) so it remembers its PC number. Sheets, settings, states and Start over are only here; agents see the customer card, Start/Pause, Sale made and Do not call.</p>
-
-      <div class="users" id="usersBox">
-        <div class="admin-head">
-          <h2>Users <span class="chip" id="usersSum"></span></h2>
-          <div class="admin-btns"><button id="btnUsersRefresh" class="btn small ghost" type="button">Refresh</button></div>
-        </div>
-        <form class="user-add" id="userAddForm" autocomplete="off" novalidate>
-          <div class="user-field">
-            <label for="uLogin">Username or email</label>
-            <input id="uLogin" type="text" maxlength="80" placeholder="e.g. ali" autocomplete="off" autocapitalize="none" spellcheck="false">
-          </div>
-          <div class="user-field">
-            <label for="uPw">Password (8 or more characters)</label>
-            <span class="pw-wrap"><input id="uPw" type="password" maxlength="72" autocomplete="new-password"><button class="btn tiny ghost pw-show" type="button" data-show="uPw">Show</button></span>
-          </div>
-          <div class="user-field narrow">
-            <label for="uRole">Role</label>
-            <select id="uRole"><option value="agent" selected>Agent</option><option value="admin">Admin</option></select>
-          </div>
-          <button id="uAdd" class="btn small primary" type="submit">Add user</button>
-        </form>
-        <p class="msg" id="usersMsg" role="status"></p>
-        <div class="admin-wrap">
-          <table class="admin-table users-table">
-            <thead><tr><th>Login</th><th>Role</th><th>Sign-in</th><th>Last sign-in (Pacific time)</th><th></th></tr></thead>
-            <tbody id="userRows"></tbody>
-          </table>
-        </div>
-        <p class="hint">An agent signs in with just the username (for example <b>ali</b>) and the password you set here. Agents only get the customer card; admins get everything. Changing someone's password signs them out.</p>
-      </div>
+      <p class="msg" id="sheetsEmpty">No sheets yet. Press <b>Add sheet</b> to load customers.</p>
+      <p class="hint">Untick a sheet to stop dialing from it without removing it. <b>Restart</b> sets that sheet's customers back to Not called; sales and Do Not Call numbers stay as they are.</p>
     </div>
+  </section>
 
-    <div class="sheets" id="sheets" aria-label="Sheets being dialed"></div>
-
-    <div class="panel" id="importPanel" hidden>
+  <section class="view" data-view="import" data-admin aria-label="Add a sheet" hidden>
+    <div class="panel" id="importPanel">
       <h2>Add a sheet</h2>
       <div class="import-col">
         <label for="sheetName">Name for this sheet (optional)</label>
@@ -142,19 +242,10 @@
       <p class="hint">Columns are found by their header: a <b>phone / number</b> column is required; <b>name</b> and <b>state</b> are optional. State lets the dialer skip people outside 8am–9pm their time.</p>
       <p class="msg" id="importMsg" role="status"></p>
     </div>
+  </section>
 
-    <div class="panel" id="statePanel" hidden>
-      <h2>States to dial <span class="chip" id="stateSummary"></span></h2>
-      <p class="hint">Only ticked states are dialed. To dial just a few: press <b>Clear all</b>, then tick the ones you want. Customers in unticked states stay on the list as "State off". Each box shows how many customers are left there and the time there now (orange = outside 8am–9pm).</p>
-      <div class="state-actions">
-        <button id="btnStatesAll" class="btn tiny" type="button">Select all</button>
-        <button id="btnStatesNone" class="btn tiny" type="button">Clear all</button>
-        <label class="state-blank"><input id="blankState" type="checkbox" checked> Also dial customers with no state <span class="state-meta" id="blankStateCount"></span></label>
-      </div>
-      <div class="state-grid" id="stateGrid"></div>
-    </div>
-
-    <div class="panel" id="dncPanel" hidden>
+  <section class="view" data-view="dnc" data-admin aria-label="Do Not Call list" hidden>
+    <div class="panel" id="dncPanel">
       <h2>Do Not Call list <span class="chip" id="dncCount">empty</span></h2>
       <p class="hint">Numbers here are never dialed, by the dialer or the Call button, even if they're on a sheet you add later. During a call you can also press <b>Do not call again</b> on the customer card, or <b>DNC</b> on a row.</p>
       <div class="import-grid">
@@ -175,8 +266,74 @@
       <div class="dnc-list" id="dncList"></div>
       <p class="msg" id="dncMsg" role="status"></p>
     </div>
+  </section>
 
-    <div class="panel" id="settingsPanel" hidden>
+  <section class="view" data-view="states" data-admin aria-label="States to dial" hidden>
+    <div class="panel" id="statePanel">
+      <h2>States to dial <span class="chip" id="stateSummary"></span></h2>
+      <p class="hint">Only ticked states are dialed. To dial just a few: press <b>Clear all</b>, then tick the ones you want. Customers in unticked states stay on the list as "State off". Each box shows how many customers are left there and the time there now (orange = outside 8am–9pm).</p>
+      <div class="state-actions">
+        <button id="btnStatesAll" class="btn tiny" type="button">Select all</button>
+        <button id="btnStatesNone" class="btn tiny" type="button">Clear all</button>
+        <label class="state-blank"><input id="blankState" type="checkbox" checked> Also dial customers with no state <span class="state-meta" id="blankStateCount"></span></label>
+      </div>
+      <div class="state-grid" id="stateGrid"></div>
+    </div>
+  </section>
+
+  <section class="view" data-view="pcs" data-admin aria-label="All PCs" hidden>
+    <div class="panel admin-panel" id="adminPanel">
+      <div class="admin-head">
+        <h2>All PCs <span class="chip" id="adminSum"></span></h2>
+        <div class="admin-btns">
+          <button id="btnAllStart" class="btn small primary" type="button">Start all</button>
+          <button id="btnAllPause" class="btn small" type="button">Pause all</button>
+        </div>
+      </div>
+      <div class="admin-wrap">
+        <table class="admin-table">
+          <thead><tr><th>PC</th><th>Online</th><th>Dialer</th><th>Now</th><th>Called</th><th>Sales</th><th>Left</th><th></th></tr></thead>
+          <tbody id="adminRows"></tbody>
+        </table>
+      </div>
+      <p class="hint">Send each PC its own link (<b>Copy link</b>) so it remembers its PC number. Only admins see this menu; agents see the customer card, Start/Pause, Sale made and Do not call.</p>
+    </div>
+  </section>
+
+  <section class="view" data-view="users" data-admin aria-label="User management" hidden>
+      <div class="panel users" id="usersBox">
+        <div class="admin-head">
+          <h2>User management <span class="chip" id="usersSum"></span></h2>
+          <div class="admin-btns"><button id="btnUsersRefresh" class="btn small ghost" type="button">Refresh</button></div>
+        </div>
+        <form class="user-add" id="userAddForm" autocomplete="off" novalidate>
+          <div class="user-field">
+            <label for="uLogin">Username or email</label>
+            <input id="uLogin" type="text" maxlength="80" placeholder="e.g. ali" autocomplete="off" autocapitalize="none" spellcheck="false">
+          </div>
+          <div class="user-field">
+            <label for="uPw">Password (8 or more characters)</label>
+            <span class="pw-wrap"><input id="uPw" type="password" maxlength="72" autocomplete="new-password"><button class="btn tiny ghost pw-show" type="button" data-show="uPw">Show</button></span>
+          </div>
+          <div class="user-field narrow">
+            <label for="uRole">Role</label>
+            <select id="uRole"><option value="agent" selected>Agent</option><option value="admin">Admin</option></select>
+          </div>
+          <button id="uAdd" class="btn small primary" type="submit">Add user</button>
+        </form>
+        <p class="msg" id="usersMsg" role="status"></p>
+        <div class="admin-wrap">
+          <table class="admin-table users-table">
+            <thead><tr><th>Login</th><th>Role</th><th>Sign-in</th><th>Last sign-in (Pacific time)</th><th></th></tr></thead>
+            <tbody id="userRows"></tbody>
+          </table>
+        </div>
+        <p class="hint">An agent signs in with just the username (for example <b>ali</b>) and the password you set here. Agents only get the customer card; admins get everything. Changing someone's password signs them out.</p>
+      </div>
+  </section>
+
+  <section class="view" data-view="settings" data-admin aria-label="Settings" hidden>
+    <div class="panel" id="settingsPanel">
       <h2>Settings</h2>
       <div class="settings-grid">
         <h3>Dialing</h3>
@@ -211,60 +368,8 @@
       <p class="hint"><b>Several PCs:</b> sheets and settings are shared with every PC automatically. Each PC picks its own number when it signs in (1 to "How many PCs"). Each phone number belongs to exactly one PC, so no number is dialed twice. Set this before you start and don't change it mid-day.</p>
       <p class="hint">A call counts as <b>answered</b> when Zoom reports it connected. Voicemail picking up also counts as answered; hang up and use <b>Retry</b> on that row if you want it redialed.</p>
     </div>
-
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr><th>#</th><th>Name</th><th>Phone</th><th>Sheet</th><th>Local time</th><th>Tries</th><th>Result</th><th></th></tr>
-        </thead>
-        <tbody id="rows"></tbody>
-      </table>
-      <div class="empty" id="empty">
-        <p><b>No leads yet.</b></p>
-        <p>Press <b>Add sheet</b> and paste your Google Sheet link or rows. You can add more sheets later.</p>
-      </div>
-    </div>
   </section>
-
-  <section class="focus" aria-label="Current customer">
-    <div class="card" id="card" hidden>
-      <div class="card-top">
-        <span class="pill" id="cStatus"></span>
-        <span class="cx-time" id="cTime"></span>
-        <span class="card-left" id="cLeft"></span>
-      </div>
-      <div class="card-name" id="cName"></div>
-      <div class="card-phone" id="cPhone"></div>
-      <dl class="card-facts card-details" id="cFacts" hidden></dl>
-      <textarea id="cBox" class="detail-box" spellcheck="false" aria-label="Customer details"></textarea>
-      <div class="card-comments" id="cCommentsWrap" hidden>
-        <div class="card-comments-h">Comments</div>
-        <textarea id="cComments" class="edit comments"></textarea>
-      </div>
-      <dl class="card-facts card-meta" id="cMeta"></dl>
-      <div class="card-check" id="cCheckWrap" hidden>
-        <div class="card-check-h">Check with the customer</div>
-        <div id="cCheck"></div>
-      </div>
-      <div class="card-call" id="cCallBtns" hidden>
-        <span class="card-call-h">Call open in the Zoom app. When it ends:</span>
-        <button id="cAnswered" class="btn small primary" type="button" title="The customer picked up. Go to the next customer.">Answered</button>
-        <button id="cNoAnswer" class="btn small" type="button" title="No answer or voicemail. Counts as a try; the number is redialed if tries are left.">No answer</button>
-        <button id="cZoomOpen" class="btn small ghost" type="button" title="Open this call in the Zoom app again (use this if Zoom didn't open)">Open in Zoom again</button>
-      </div>
-      <div class="card-actions">
-        <div class="card-next" id="cNext"></div>
-        <div class="card-btns">
-          <button id="cSale" class="btn small sale" type="button" title="Mark this customer as a sale. Sales are never auto-dialed again.">Sale made</button>
-          <button id="cDnc" class="btn small danger" type="button" title="Add this number to the Do Not Call list">Do not call again</button>
-        </div>
-      </div>
-    </div>
-    <div class="card card-empty" id="cardEmpty">
-      <p><b>Waiting for the first call.</b></p>
-      <p>The customer's details show here while you're dialing.</p>
-    </div>
-  </section>
+  </div>
 
   <aside class="phone" aria-label="Zoom Phone">
     <div class="phone-head">
@@ -276,10 +381,11 @@
     <p class="hint phone-hint" id="phoneHint">Calls are made by the Zoom app on this PC. Signing in here is optional: it lets the dialer see by itself when calls are answered or end.</p>
   </aside>
 </main>
+</div>
 
-<script src="states.js?v=1.6.0"></script>
-<script src="xlsx.js?v=1.6.0"></script>
-<script src="cloud.js?v=1.6.0"></script>
-<script src="dialer.js?v=1.6.0"></script>
+<script src="states.js?v=1.7.0"></script>
+<script src="xlsx.js?v=1.7.0"></script>
+<script src="cloud.js?v=1.7.0"></script>
+<script src="dialer.js?v=1.7.0"></script>
 </body>
 </html>
