@@ -393,3 +393,24 @@ html[data-side="rail"] .side-user { justify-content: center; padding: 8px 0 2px;
 .cx-summary[hidden] { display: none; }
 .cx-summary-h { font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
 .cx-summary-t { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; line-height: 1.5; max-height: 260px; overflow-y: auto; }
+
+/* Find customer page (v1.8.0) */
+.find-panel input#findBox { font-size: 16px; padding: 10px 12px; }
+.find-wrap { flex: none; min-height: 0; max-height: 300px; }
+.find-row { cursor: pointer; }
+.find-row:hover td { background: var(--row-hl); }
+.find-none { padding: 4px 2px; }
+.find-card { gap: 12px; }
+.find-top { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px; }
+.find-flags { font-size: 13px; font-weight: 700; color: var(--bad); }
+.find-flags:empty { display: none; }
+.find-name { font-size: 26px; font-weight: 700; line-height: 1.15; overflow-wrap: anywhere; }
+.find-phone { font-family: var(--mono); font-size: 20px; color: var(--accent); font-variant-numeric: tabular-nums; }
+.find-facts { display: grid; grid-template-columns: max-content 1fr; gap: 6px 20px; margin: 0; padding-top: 12px; border-top: 1px solid var(--line); font-size: 14px; }
+.find-facts:empty { display: none; }
+.find-facts dt { color: var(--muted); font-weight: 600; font-size: 13px; }
+.find-facts dd { margin: 0; overflow-wrap: anywhere; }
+.find-card .cx-summary { margin-top: 0; }
+.find-actions { justify-content: space-between !important; }
+.find-actions .hint { flex: 1 1 240px; }
+.find-actions .hint:empty { display: none; }

@@ -5,14 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sky High Dialer</title>
 <meta name="color-scheme" content="light dark">
-<link rel="stylesheet" href="dialer.css?v=1.7.1">
-<script src="theme.js?v=1.7.1"></script>
+<link rel="stylesheet" href="dialer.css?v=1.8.0">
+<script src="theme.js?v=1.8.0"></script>
 </head>
 <body class="signed-out">
 <svg class="sprite" width="0" height="0" aria-hidden="true" focusable="false">
   <defs>
     <symbol id="i-menu" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/></symbol>
     <symbol id="i-card" viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="15" rx="3"/><circle cx="9" cy="10.5" r="2"/><path d="M5.8 16.2c.5-1.6 1.7-2.5 3.2-2.5s2.7.9 3.2 2.5M15 10h3.2M15 13.5h3.2"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.2"/><path d="M15.2 15.2L20 20"/></symbol>
     <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6.5h11M9 12h11M9 17.5h11"/><path d="M4.5 6.5h.01M4.5 12h.01M4.5 17.5h.01" stroke-width="2.6"/></symbol>
     <symbol id="i-sale" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M14.6 9.6c-.4-.9-1.4-1.4-2.6-1.4-1.5 0-2.6.7-2.6 1.9 0 2.6 5.4 1.2 5.4 3.9 0 1.2-1.2 2-2.8 2-1.3 0-2.4-.6-2.8-1.6M12 6.6v1.6M12 16v1.5"/></symbol>
     <symbol id="i-sheets" viewBox="0 0 24 24"><rect x="3.5" y="4" width="17" height="16" rx="2.5"/><path d="M3.5 9.5h17M3.5 14.5h17M9.5 9.5V20"/></symbol>
@@ -59,6 +60,7 @@
   <div class="side-nav" id="sideNav">
     <div class="side-h">Dialing</div>
     <button class="nav" type="button" data-go="card" title="Customer card"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-card"/></svg><span class="nav-label">Customer card</span></button>
+    <button class="nav" type="button" data-go="search" title="Find a customer by phone number or name"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-search"/></svg><span class="nav-label">Find customer</span></button>
     <button class="nav" type="button" data-go="leads" data-admin title="Lead list"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-list"/></svg><span class="nav-label">Lead list</span><span class="nav-n" id="nLeads"></span></button>
     <button class="nav" type="button" data-go="sales" data-admin title="Sales"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-sale"/></svg><span class="nav-label">Sales</span><span class="nav-n" id="nSales"></span></button>
 
@@ -156,6 +158,46 @@
     <div class="card card-empty" id="cardEmpty">
       <p><b>Waiting for the first call.</b></p>
       <p>The customer's details show here while you're dialing.</p>
+    </div>
+  </section>
+
+  <section class="view" data-view="search" aria-label="Find a customer" hidden>
+    <div class="panel find-panel">
+      <h2>Find customer <span class="chip" id="findCount">type to search</span></h2>
+      <input id="findBox" type="text" autocomplete="off" spellcheck="false" placeholder="Phone number or name, e.g. 720 620 8525 or John Smith" aria-label="Phone number or name">
+      <p class="hint">Any format works, and part of a number is enough. Searches every customer on every sheet and every PC.</p>
+    </div>
+    <div class="table-wrap find-wrap" id="findWrap" hidden>
+      <table>
+        <thead>
+          <tr><th>Name</th><th>Phone</th><th>Customer time</th><th>Sheet</th><th>Result</th></tr>
+        </thead>
+        <tbody id="findRows"></tbody>
+      </table>
+    </div>
+    <p class="hint find-none" id="findNone" hidden>No customer matches that. Check the number, or try part of it.</p>
+    <div class="card find-card" id="findCard" hidden>
+      <div class="find-top">
+        <span class="pill" id="fStatus"></span>
+        <span class="cx-time" id="fTime"></span>
+        <span class="find-flags" id="fFlags"></span>
+      </div>
+      <div class="find-name" id="fName"></div>
+      <div class="find-phone" id="fPhone"></div>
+      <dl class="find-facts" id="fFacts"></dl>
+      <textarea id="fBox" class="detail-box" spellcheck="false" aria-label="Customer details (you can edit them here)"></textarea>
+      <div class="cx-summary" id="fSummaryWrap" hidden>
+        <div class="cx-summary-h">CX Summary</div>
+        <div class="cx-summary-t" id="fSummary"></div>
+      </div>
+      <div class="card-actions find-actions">
+        <span class="hint" id="fCallWhy"></span>
+        <div class="card-btns">
+          <button id="fCall" class="btn small primary" type="button">Call now</button>
+          <button id="fSale" class="btn small sale" type="button" title="Mark this customer as a sale. Sales are never auto-dialed again.">Sale made</button>
+          <button id="fDnc" class="btn small danger" type="button" title="Add this number to the Do Not Call list">Do not call again</button>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -390,9 +432,9 @@
 </main>
 </div>
 
-<script src="states.js?v=1.7.1"></script>
-<script src="xlsx.js?v=1.7.1"></script>
-<script src="cloud.js?v=1.7.1"></script>
-<script src="dialer.js?v=1.7.1"></script>
+<script src="states.js?v=1.8.0"></script>
+<script src="xlsx.js?v=1.8.0"></script>
+<script src="cloud.js?v=1.8.0"></script>
+<script src="dialer.js?v=1.8.0"></script>
 </body>
 </html>

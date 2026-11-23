@@ -649,6 +649,7 @@
     renderSheets();
     renderSales();
     renderCard();
+    if (view === "search") renderSearch();
     renderDnc();
     renderStates();
     const rb = $("btnRestart");
@@ -869,9 +870,9 @@
 
   // ---------- menu: one page at a time ----------
   // Agents only ever get the customer card; every other page is for admins.
-  const VIEWS = ["card", "leads", "sales", "sheets", "import", "dnc", "states", "pcs", "users", "settings"];
+  const VIEWS = ["card", "search", "leads", "sales", "sheets", "import", "dnc", "states", "pcs", "users", "settings"];
   function setView(v) {
-    if (!VIEWS.includes(v) || (v !== "card" && cloud.role !== "admin")) v = "card";
+    if (!VIEWS.includes(v) || (v !== "card" && v !== "search" && cloud.role !== "admin")) v = "card";
     view = v;
     for (const s of document.querySelectorAll(".view")) s.hidden = s.dataset.view !== v;
     for (const b of document.querySelectorAll(".nav[data-go]")) {
@@ -879,6 +880,8 @@
     }
     if (cloud.role === "admin") { try { localStorage.setItem("shd-view", v); } catch { /* ignore */ } }
     if (v === "card") { renderCard(); requestAnimationFrame(() => { if (!$("card").hidden) grow($("cBox")); }); }
+
+    if (v === "search") { renderSearch(); requestAnimationFrame(() => { const b = $("findBox"); b.focus(); b.select(); if (!$("findCard").hidden) grow($("fBox")); }); }
   }
 
   // Which customer the card shows: the one on the line, else the one about to be dialed, else the last one called.
@@ -1041,6 +1044,161 @@
     $("cSale").onclick = () => toggleSale(l);
   }
 
+  // ---------- Find customer (v1.8.0): search every customer by phone number or name ----------
+  // Every PC gets every customer from the database, so this finds customers on any sheet and any PC.
+  // Picking one shows all their details (editable, saved like on the card), the CX Summary, and Call / Sale / DNC.
+  let findSel = null;          // id of the customer shown below the results
+  let findEditorFor = null;
+  let findArmed = null;        // id armed for "state unknown, click again to call"
+  const FIND_MAX = 50;
+  const FIND_TEXT_KEYS = ["name", "address", "carrier", "plan", "bornState"]; // never SSN or bank details
+  function resultText(l) {
+    if (isDnc(l)) return "Do not call";
+    if (l.sale) return "Sale made";
+    if ((l.status === "noanswer" || l.status === "error" || l.status === "blocked") && l.result) return l.result;
+    return LABEL[l.status] || l.status;
+  }
+  function findMatches(q) {
+    q = String(q || "").trim();
+    if (!q) return null;
+    const hasLetters = /[a-z]/i.test(q);
+    let d = digits(q);
+    if (!hasLetters) {
+      if (d.length < 3) return null;
+      if (d.length === 11 && d[0] === "1") d = d.slice(1);
+      d = d.slice(-10);
+      const hits = leads.filter((l) => last10(l.phone).includes(d) || digits((l.details || {}).phone).includes(d));
+      const exact = (l) => (last10(l.phone) === d ? 0 : 1);
+      return hits.sort((a, b) => exact(a) - exact(b) || String(a.name || "").localeCompare(String(b.name || "")));
+    }
+    if (q.replace(/\s/g, "").length < 2) return null;
+    const words = q.toLowerCase().split(/\s+/).filter(Boolean);
+    const hits = leads.filter((l) => {
+      const det = l.details || {};
+      const hay = [l.name, l.display, l.state, l.address, (sheetOf(l) || {}).name, ...FIND_TEXT_KEYS.map((k) => det[k])]
+        .filter(Boolean).join(" ").toLowerCase();
+      return words.every((w) => hay.includes(w));
+    });
+    const starts = (l) => (String(l.name || "").toLowerCase().startsWith(words[0]) ? 0 : 1);
+    return hits.sort((a, b) => starts(a) - starts(b) || String(a.name || "").localeCompare(String(b.name || "")));
+  }
+  function callBlock(l) {
+    if (current || inboundBusy) return "Finish the current call first.";
+    if (isDnc(l)) return "This number is on Do Not Call.";
+    const why = blockReason(l.phone);
+    if (why) return `Not dialed: ${why}.`;
+    if (!isMine(l)) return `PC ${ownerOf(l)} dials this customer.`;
+    if (l.state && !inHours(l)) return `It's ${localTimeText(l)} for this customer. Calls only between 8am and 9pm their time.`;
+    return "";
+  }
+  function renderSearch() {
+    const q = $("findBox").value;
+    const hits = findMatches(q);
+    const body = $("findRows");
+    body.textContent = "";
+    if (hits && findSel && !hits.some((l) => l.id === findSel)) findSel = null;
+    if (hits && hits.length === 1) findSel = hits[0].id;
+    if (!hits) findSel = null;
+    $("findWrap").hidden = !hits || !hits.length || (hits.length === 1);
+    $("findNone").hidden = !hits || hits.length > 0;
+    $("findCount").textContent = !hits ? "type to search" : hits.length === 1 ? "1 customer" : `${hits.length} customers` + (hits.length > FIND_MAX ? `, first ${FIND_MAX} shown` : "");
+    for (const l of (hits || []).slice(0, FIND_MAX)) {
+      const tr = document.createElement("tr");
+      tr.className = "find-row" + (l.id === findSel ? " current" : "");
+      tr.tabIndex = 0;
+      tr.title = "Show all of this customer's details";
+      const td = (cls, text) => { const c = document.createElement("td"); if (cls) c.className = cls; c.textContent = text; tr.appendChild(c); return c; };
+      td("name", l.name || "—");
+      td("tel", l.display);
+      const lt = td("", localTimeText(l));
+      if (l.state && settings.hoursGuard && !inHours(l)) lt.className = "lt-off";
+      td("sheetname", (sheetOf(l) || {}).name || "—");
+      const pill = document.createElement("span");
+      pill.className = "pill " + (isDnc(l) ? "blocked" : l.status);
+      pill.textContent = resultText(l);
+      td("", "").appendChild(pill);
+      const pick = () => { findSel = l.id; findArmed = null; renderSearch(); requestAnimationFrame(() => { $("findCard").scrollIntoView({ block: "nearest" }); grow($("fBox")); }); };
+      tr.addEventListener("click", pick);
+      tr.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(); } });
+      body.appendChild(tr);
+    }
+    renderFindCard(findSel ? leadById(findSel) : null);
+  }
+  function renderFindCard(l) {
+    $("findCard").hidden = !l;
+    if (!l) { findEditorFor = null; return; }
+    const pill = $("fStatus");
+    pill.className = "pill " + (isDnc(l) ? "blocked" : l.status);
+    pill.textContent = resultText(l);
+    const lt = localTimeText(l);
+    $("fTime").textContent = lt && lt !== "—" ? "Customer time: " + lt : "Customer time: unknown (no state)";
+    $("fTime").classList.toggle("off", !!(l.state && !inHours(l)));
+    $("fFlags").textContent = [l.sale ? "Sale made" : "", isDnc(l) ? "On Do Not Call" : ""].filter(Boolean).join(" · ");
+    $("fName").textContent = l.name || "No name on sheet";
+    $("fPhone").textContent = l.display;
+    const facts = $("fFacts"); facts.textContent = "";
+    const rows = [
+      ["Result", resultText(l)],
+      ["Tries", `${l.attempts || 0} of ${settings.maxAttempts}`],
+      ["Last call", l.lastCall],
+      ["Sale time", l.sale ? l.saleAt : ""],
+      ["State", l.state],
+      ["Sheet", (sheetOf(l) || {}).name],
+      ["Dialed by", settings.pcCount > 1 ? `PC ${ownerOf(l)}` : ""]
+    ];
+    for (const [k, v] of rows) {
+      if (!v) continue;
+      const dt = document.createElement("dt"); dt.textContent = k;
+      const dd = document.createElement("dd"); dd.textContent = v;
+      facts.append(dt, dd);
+    }
+    // the 21 details, editable the same way as on the customer card
+    const box = $("fBox");
+    if (findEditorFor !== l.id) {
+      findEditorFor = l.id;
+      box.value = boxText(l);
+      box.oninput = () => { applyBox(l, box.value); grow(box); };
+      box.onchange = () => {
+        const bad = (box.value.match(/^\s*Phone Number\s*:\s?(.*)$/im) || [])[1];
+        if (bad && !toE164(bad)) setStatus("error", "That phone number doesn't look right. The dialer keeps using the old one.");
+        store.save(); render();
+      };
+      requestAnimationFrame(() => grow(box));
+    } else if (box !== document.activeElement) {
+      const t = boxText(l); if (box.value !== t) { box.value = t; grow(box); }
+    }
+    const sum = settings.showSummary === false ? "" : String(l.comments || "").trim();
+    $("fSummaryWrap").hidden = !sum;
+    if ($("fSummary").textContent !== sum) $("fSummary").textContent = sum;
+    // Call now: same rules as the dialer (DNC, no extra charges, owner PC, 8am-9pm customer time)
+    const block = callBlock(l);
+    const call = $("fCall");
+    const unknownTime = !l.state && settings.hoursGuard;
+    call.disabled = !!block;
+    call.classList.toggle("armed", findArmed === l.id);
+    call.textContent = findArmed === l.id ? "State unknown: click again to call" : "Call now";
+    $("fCallWhy").textContent = block || (unknownTime ? "No state for this customer, so the dialer can't check their time. Make sure it's 8am to 9pm for them." : "");
+    call.onclick = () => {
+      if (callBlock(l)) { renderSearch(); return; }
+      if (unknownTime && findArmed !== l.id) {
+        findArmed = l.id; renderSearch();
+        setTimeout(() => { if (findArmed === l.id) { findArmed = null; if (view === "search") renderSearch(); } }, 5000);
+        return;
+      }
+      findArmed = null;
+      cancelCountdown();
+      shownLeadId = l.id;
+      dial(l);
+      setView("card");
+    };
+    $("fSale").textContent = l.sale ? "Sale made ✓ (undo)" : "Sale made";
+    $("fSale").classList.toggle("armed", !!l.sale);
+    $("fSale").onclick = () => toggleSale(l);
+    $("fDnc").textContent = isDnc(l) ? "On Do Not Call (undo)" : "Do not call again";
+    $("fDnc").classList.toggle("armed", isDnc(l));
+    $("fDnc").onclick = () => toggleDnc(l);
+  }
+
   // Sheets page: one row per sheet, with totals across every PC.
   function renderSheets() {
     const body = $("sheetRows");
@@ -1179,6 +1337,12 @@
   $("btnDncAdd").addEventListener("click", () => { if (addDnc(numbersIn($("dncBox").value))) $("dncBox").value = ""; });
   $("dncFile").addEventListener("change", () => addDncFile($("dncFile").files[0]));
   $("dncSearch").addEventListener("input", renderDnc);
+  $("findBox").addEventListener("input", () => { findArmed = null; renderSearch(); });
+  $("findBox").addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    const first = $("findRows").querySelector("tr");
+    if (first) first.click();
+  });
   $("btnDncCsv").addEventListener("click", () => {
     const csv = ["Phone", ...[...dnc].sort().map((n) => pretty("+1" + n))].join("\r\n");
     const a = document.createElement("a");
@@ -1346,7 +1510,7 @@
     const l = current ? leadById(current.leadId) : null;
     return { running, state: $("statusBox").dataset.state, text: $("statusText").textContent.slice(0, 120),
       lead: l ? (l.name || l.display) : "", called: mine.filter((x) => x.attempts > 0).length,
-      sales: mine.filter((x) => x.sale).length, left: candidates().length, v: "1.7.1", zoom: zoomLink + 1 };
+      sales: mine.filter((x) => x.sale).length, left: candidates().length, v: "1.8.0", zoom: zoomLink + 1 };
   }
   function setOnline(ok, err) {
     const el = $("syncState");
